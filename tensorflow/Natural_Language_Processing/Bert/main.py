@@ -13,12 +13,14 @@ python=3.6
 库: tensorflow-gpu=1.15.0 tensorflow-hub=0.12.0 bert-tensorflow=1.0.1 scikit-learn=0.24.2
 
 借助TF Hub上的BERT进行情感分类[微调finetune BERT][IMDB]
-    python3 main.py[未成功运行, 由于"urllib.error.URLError: <urlopen error [Errno 110] Connection timed out>"]
+    python3 main.py[未成功运行, 由于"urllib.error.URLError: <urlopen error [Errno 110] Connection timed out>"][无法访问"https://tfhub.dev/google/bert_uncased_L-12_H-768_A-12/1"]
+        [转换域名到国内镜像 https://hub.tensorflow.google.cn/ 可成功运行]
+
 
 存疑: 如何使用自己的数据对BERT进行预训练
 '''
 OUTPUT_DIR = 'output'
-DO_DELETE = False # Whether or not to clear/delete the directory and create a new one
+DO_DELETE = True # Whether or not to clear/delete the directory and create a new one
 if DO_DELETE:
     try:
         tf.gfile.DeleteRecursively(OUTPUT_DIR)
@@ -55,7 +57,7 @@ test_InputExamples = test.apply(lambda x: bert.run_classifier.InputExample(guid=
 # 第二步:
 # 包括小写、分词、将words分解成WordPieces、将词映射成索引、添加特殊字符CLS/SEP等
 # This is a path to an uncased (all lowercase) version of BERT
-BERT_MODEL_HUB = "https://tfhub.dev/google/bert_uncased_L-12_H-768_A-12/1"
+BERT_MODEL_HUB = "https://hub.tensorflow.google.cn/google/bert_uncased_L-12_H-768_A-12/1"
 
 def create_tokenizer_from_hub_module():
     """Get the vocab file and casing info from the Hub module."""
@@ -259,7 +261,8 @@ test_input_fn = bert.run_classifier.input_fn_builder(
     seq_length=MAX_SEQ_LENGTH,
     is_training=False,
     drop_remainder=False)
-estimator.evaluate(input_fn=test_input_fn, steps=None)
+result = estimator.evaluate(input_fn=test_input_fn, steps=None)
+print(result)
 
 print("Predicting...")
 def getPrediction(in_sentences):
