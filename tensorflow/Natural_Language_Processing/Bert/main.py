@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 import tensorflow_hub as hub
 import bert
+from bert import run_classifier
 from datetime import datetime
 
 from util import *
@@ -9,10 +10,10 @@ from util import *
 参考: [https://github.com/google-research/bert]
 
 python=3.6
-库: tensorflow-gpu=1.15.0 tensorflow-hub=0.12.0 bert-tensorflow=1.0.4 scikit-learn=0.24.2
+库: tensorflow-gpu=1.15.0 tensorflow-hub=0.12.0 bert-tensorflow=1.0.1 scikit-learn=0.24.2
 
 借助TF Hub上的BERT进行情感分类[微调finetune BERT][IMDB]
-    python3 
+    python3 main.py[未成功运行, 由于"urllib.error.URLError: <urlopen error [Errno 110] Connection timed out>"]
 
 存疑: 如何使用自己的数据对BERT进行预训练
 '''
