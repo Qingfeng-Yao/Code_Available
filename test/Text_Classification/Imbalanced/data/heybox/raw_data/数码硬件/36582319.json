@@ -1,2 +1,0 @@
-高性能AMD Radeon Instinct MI100计算加速卡参数规格曝光
-最早于2018年便被关注的“Arcturus”架构一直被视为AMD Navi的继任者，据外媒Wccftech报道，最近有网友发现了高性能计算加速卡AMDRadeon Instinct MI100的参数规格，其基于Arcturus架构，早期原型卡配备有32GB HBM2显存，TDP为200W。 根据已知信息，AMDRadeon Instinct MI100开发板基于Arcturus XL GPU，TDP为200W，拥有高达32GB HBM2显存，频率在1000-1200MHz之间，其中还提到Arcturus XL GPU可能是面积较大的单芯片，而并非基于Zen 2架构的Ryzen CPU系列的模块化设计。 Wccftech认为AMDRadeon Instinct MI100的命名可以作为其绝对性能的指标，参照MI60，可以认为MI100的INT8算力约为100TFLOP，提升约66%，以及其FP16算力约为50 TFLOP。 本文来源：IT之家 作者：南桥如有侵权请联系删除

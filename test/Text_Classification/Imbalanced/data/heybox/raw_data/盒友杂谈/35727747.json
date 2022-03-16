@@ -1,2 +1,0 @@
-能靠喊了，火狐Firefox浏览器引入Voice语音控件
-Firefox Voice 是 Mozilla 的一项新实验，刚刚作为 Beta 版本发布。该实验将语音控件引入 Firefox Web 浏览器，目前仅适用于桌面版 Firefox。有兴趣的用户可以访问 Firefox Voice Campaign 网站以加入测试版，并在 Firefox Web 浏览器中安装 Firefox Voice 扩展。该扩展程序需要更多的权限，系统会询问是否允许 Firefox Voice 收集语音记录并将其提供给 Mozilla 进行研究，用户可以允许或拒绝该请求。需要注意的是，Firefox Voice 使用了谷歌云的语音服务。任何语音命令都会发送到谷歌服务。但 Mozilla 称谷歌不会记录这些命令。实际上，Firefox Voice 并不是将语音控件引入 Firefox 的首次尝试。Mozilla 曾于 2017 年启动过一项名为 “Voice Fill” 的实验，以便能够与搜索引擎“对话”。 本文来源：开源中国 作者：xplanet如有侵权请联系删除

@@ -1,2 +1,0 @@
-代码显示谷歌Pixel 5具备反向无线充电功能
-通过深入挖掘Android 11首个开发者预览版代码，外媒发现即将到来的Pixel 5旗舰可能支持反向无线充电功能。XDA的开发人员在Mishaal Rahman审查Android 11代码之后，发现了名为Battery Share功能，也就是反向无线充电功能。在Rahman分享的截图中显示这样一条警告：“使用Battery Share的时候，手机的电池会更快耗尽。”反向无线充电功能意味着Pixel 5能够为其他兼容无线充电标准的设备（例如无线耳机）进行充电。此外Rahman还指出该功能的前缀为“com.google.android”而不是“com.android”，从而试图揭露了反向无线充电功能是AOSP功能的可能性。更直白的说，这可能是仅限于谷歌Pixel系列手机的代码。本文来源：cnBeta 作者：cnBeta如有侵权请联系删除

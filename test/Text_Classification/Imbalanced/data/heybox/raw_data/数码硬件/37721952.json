@@ -1,2 +1,0 @@
-AMD Infinity Fabric升级：将支持CPU与GPU连接
-在AMD的财务分析日上，AMD 透露将会升级其Infinity Fabric总线，不仅支持CPU-CPU以及GPU-GPU之间的连接，而且还将支持CPU-GPU之间的连接。AMD在其第一代Zen 架构处理器中引入了Infinity Fabric，使多个chiplet小芯片可以高速连接，也可以使服务器的多个CPU插槽之间高速连接。随着Zen 2的发布，AMD还推出了第二代IF，提供了更快的速度，也提供了GPU到GPU的连接，但是CPU到GPU的连接仍然基于PCIe。现在，AMD宣布下一代的Infinity Fabric称为Infinity Architecture，最多支持8个GPU芯片的连接，而且还支持CPU到GPU的连接，预计这将给未来的APU带来更大的性能提升。AMD透露，新的El Capitan超级计算机将采用最新一代的Infinity Architecture，也就是说该功能将会首先在服务器级的Zen 4处理器上实现，用到消费级产品上可能要等到2022年之后了。本文来源：IT之家 作者：孤城如有侵权请联系删除
