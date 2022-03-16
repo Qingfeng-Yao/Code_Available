@@ -1,0 +1,2 @@
+iOS 13全系越狱发布：iPhone 6s到iPhone 11皆支持
+前不久，Pwn20wnd团队发布unc0ver v4.0.0，实现对A12~A13处理器iOS 13设备的越狱支持，换言之，iPhone XS系列、iPhone XR、iPhone 11系列、现款iPad Pro/iPad Air/iPad mini均“解锁金身”。最新上线的v4.2版本更进一步，将A9~A11处理器（iPhone 6s到iPhone X）设备纳入进来，换言之，所有能够升级到iOS 13系统（iOS 13.3及以下）的设备都能越狱了。当然，更早时候，Checkra1n也已支持iPhone 6s到iPhone X基于iOS 13的越狱，从越狱效果上看，两者没有差别。不过，Checkra1n首次越狱需要借助电脑实现，而Unc0ver可以在iPhone上独立完成。unc0ver v4.2还修复了A12~A13设备部分系统自带服务的BUG问题，比如iMessage消息不通知。虽然越狱人气下滑，但通话录音、微信双开、应用随意升降级、换字体等都一些用户仍是刚需，已成习惯。本文来源：快科技 作者：万南如有侵权请联系删除
