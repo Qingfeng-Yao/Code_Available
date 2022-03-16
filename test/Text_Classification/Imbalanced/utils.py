@@ -43,7 +43,7 @@ def load_heybox_dataset(path, text_field, label_field, args, **kwargs):
     label_field.build_vocab(train_dataset, test_dataset)
     train_iter, test_iter = data.Iterator.splits(
         (train_dataset, test_dataset),
-        batch_sizes=(args.batch_size, len(test_dataset)),
+        batch_sizes=(args.batch_size, 100),
         sort_key=lambda x: len(x.text),
         **kwargs)
     return train_iter, test_iter

@@ -3,6 +3,7 @@ import argparse
 import random
 import time
 import numpy as np
+import collections
 from sklearn.metrics import confusion_matrix
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
@@ -58,7 +59,7 @@ args.store_name = '_'.join([args.dataset, 'textcnn', args.exp_str])
 prepare_folders(args)
 if args.seed is not None:
     random.seed(args.seed)
-    np.random.seed(rand_number)
+    np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     cudnn.deterministic = True
     print('You have chosen to seed training. '
@@ -190,14 +191,25 @@ def validate(val_iter, text_cnn, epoch, args):
         print(output)
         print(out_cls_acc)
 
+    return top1.avg, cls_acc
+
+cur_cls_acc = None
 for epoch in range(args.start_epoch, args.epochs):
     train(train_iter, text_cnn, optimizer, epoch, args)
-    acc1 = validate(test_iter, text_cnn, epoch, args)
+    acc1, cls_acc = validate(test_iter, text_cnn, epoch, args)
 
     is_best = acc1 > best_acc1
     best_acc1 = max(acc1, best_acc1)
     output_best = 'Best Acc@1: %.3f\n' % best_acc1
+    if cur_cls_acc is None or is_best:
+	    cur_cls_acc = cls_acc
     print(output_best)
+    if args.dataset == 'heybox':
+	    class_dict = {0: 289, 1: 667, 2: 50, 3: 159, 4: 142, 5: 1645, 6: 672, 7: 143, 8: 89, 9: 188, \
+            10: 972, 11: 505, 12: 290, 13: 1174, 14: 545, 15: 2057, 16: 820, 17: 2090}
+        class_acc_dict = {k: {"acc": cur_cls_acc[k], "data_num": v} for k,v in class_dict.items()}
+        sorted_dict = collections.OrderedDict(sorted(class_acc_dict.items(), key=lambda t: t[1]["data_num"]))
+        print('According to the best_acc1 for class accuracy: {}'.format(sorted_dict))
 
     save_checkpoint(args, {
             'epoch': epoch + 1,
