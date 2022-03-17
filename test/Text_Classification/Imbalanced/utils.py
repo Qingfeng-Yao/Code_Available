@@ -24,29 +24,40 @@ def load_word_vectors(model_name, model_path):
     vectors = Vectors(name=model_name, cache=model_path)
     return vectors
 
-def load_heybox_dataset(path, text_field, label_field, args, **kwargs):
+def load_heybox_dataset(path, text_field, label_field, args, is_semi=False, **kwargs):
     text_field.tokenize = word_cut
-    train_dataset, test_dataset = data.TabularDataset.splits(
-        path=path, format='tsv', skip_header=True,
-        train='train.tsv', validation='test.tsv',
-        fields=[
-            ('index', None),
-            ('label', label_field),
-            ('text', text_field)
-        ]
-    )
+    if is_semi:
+        train_dataset, val_dataset, test_dataset = data.TabularDataset.splits(
+            path=path, format='tsv', skip_header=True,
+            train='pseudo_train.tsv', validation='extra.tsv', test='test.tsv',
+            fields=[
+                ('index', None),
+                ('label', label_field),
+                ('text', text_field)
+            ]
+        )
+    else:
+        train_dataset, val_dataset, test_dataset = data.TabularDataset.splits(
+            path=path, format='tsv', skip_header=True,
+            train='train.tsv', validation='extra.tsv', test='test.tsv',
+            fields=[
+                ('index', None),
+                ('label', label_field),
+                ('text', text_field)
+            ]
+        )
     if args.static and args.pretrained_name and args.pretrained_path:
         vectors = load_word_vectors(args.pretrained_name, args.pretrained_path)
-        text_field.build_vocab(train_dataset, test_dataset, vectors=vectors)
+        text_field.build_vocab(train_dataset, val_dataset, test_dataset, vectors=vectors)
     else:
-        text_field.build_vocab(train_dataset, test_dataset)
-    label_field.build_vocab(train_dataset, test_dataset)
-    train_iter, test_iter = data.Iterator.splits(
-        (train_dataset, test_dataset),
-        batch_sizes=(args.batch_size, 100),
+        text_field.build_vocab(train_dataset, val_dataset, test_dataset)
+    label_field.build_vocab(train_dataset, val_dataset, test_dataset)
+    train_iter, val_iter, test_iter = data.Iterator.splits(
+        (train_dataset, val_dataset, test_dataset),
+        batch_sizes=(args.batch_size, args.batch_size, 100),
         sort_key=lambda x: len(x.text),
         **kwargs)
-    return train_iter, test_iter
+    return train_iter, val_iter, test_iter
 
 def save_checkpoint(args, state, is_best):
     filename = '{}/{}/ckpt.pth.tar'.format(args.root_model, args.store_name)

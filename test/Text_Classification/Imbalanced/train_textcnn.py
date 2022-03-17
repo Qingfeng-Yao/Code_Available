@@ -3,7 +3,6 @@ import argparse
 import random
 import time
 import numpy as np
-import collections
 from sklearn.metrics import confusion_matrix
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
@@ -17,18 +16,25 @@ python=3.5.6
 库: torch=1.0.0 torchtext=0.3.1 jieba=0.39 scikit-learn
 注释掉"cudnn.benchmark = True"，否则会出错
 
-不平衡数据heybox的textcnn标准分类
+不平衡数据heybox的textcnn分类
     将原始数据分成三份: 一份用于训练(不均衡)，一份用于测试(均衡，每类取100个样本)，还有一份用于半监督(不均衡，取剩下的30%)
     三份数据均组织成tsv格式
-    使用中文预训练sgns.zhihu.word
-    [python3 train_standard_textcnn.py][单块小GPU无法成功运行]
-    [best acc:71.070]
+    标准分类
+        [python3 train_textcnn.py][单块小GPU无法成功运行]
+        [best acc: 91.278][cls acc: [0.800,0.770,0.950,0.960,0.860,0.990,0.910,1.000,0.980,0.990,0.790,0.850,
+ 0.870,0.970,0.960,0.970,0.900,0.910]]
+    半监督分类
+        首先进行伪标签的生成，即运行文件gen_pseudolabels.py
+        [python3 train_textcnn.py --exp_str semi_training]
+        [best acc: ][cls acc: ]
+    自监督分类
+        首先进行预训练，即运行文件
 '''
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='heybox', choices=['heybox'])
 parser.add_argument('--data_path', type=str, default='./data')
-parser.add_argument('--exp_str', default='standard_training', type=str,
+parser.add_argument('--exp_str', default='standard_training', choices=['standard_training', 'semi_training', 'self_training', 'pre_training'],
                     help='(additional) name to indicate experiment')
 parser.add_argument('--device', type=int, default=0, help='device to use for iterate data, -1 mean cpu [default: 0]')
 
@@ -44,7 +50,7 @@ parser.add_argument('--pretrained_name', type=str, default='sgns.zhihu.word',
 parser.add_argument('--pretrained_path', type=str, default='pretrained', help='path of pre-trained word vectors')
 
 parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate [default: 0.001]')
-parser.add_argument('--epochs', type=int, default=256, help='number of epochs for train [default: 256]')
+parser.add_argument('--epochs', type=int, default=200, help='number of epochs for train [default: 200]')
 parser.add_argument('--start_epoch', default=0, type=int)
 parser.add_argument('--batch_size', type=int, default=128, help='batch size for training [default: 128]')
 
@@ -73,8 +79,12 @@ print('Preparing data...')
 if args.dataset == 'heybox':
     text_field = data.Field(lower=True)
     label_field = data.Field(sequential=False)
-    train_iter, test_iter = load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
-        text_field, label_field, args, device=args.device, repeat=False, shuffle=True)
+    if args.exp_str == 'semi_training':
+        train_iter, _, test_iter = load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
+            text_field, label_field, args, is_semi=True, device=args.device, repeat=False, shuffle=True)
+    else:
+        train_iter, _, test_iter = load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
+            text_field, label_field, args, device=args.device, repeat=False, shuffle=True)
     
     args.vocabulary_size = len(text_field.vocab)
     if args.static:
@@ -83,6 +93,7 @@ if args.dataset == 'heybox':
     args.class_num = len(label_field.vocab)
 else:
     raise NotImplementedError("Dataset {} is not supported!".format(args.dataset))
+print("vocabulary_size: {}".format(args.vocabulary_size))
 
 print("===> Creating model textcnn")
 args.cuda = args.device != -1 and torch.cuda.is_available()
@@ -191,25 +202,20 @@ def validate(val_iter, text_cnn, epoch, args):
         print(output)
         print(out_cls_acc)
 
-    return top1.avg, cls_acc
+    return top1.avg, out_cls_acc
 
 cur_cls_acc = None
 for epoch in range(args.start_epoch, args.epochs):
     train(train_iter, text_cnn, optimizer, epoch, args)
-    acc1, cls_acc = validate(test_iter, text_cnn, epoch, args)
+    acc1, out_cls_acc = validate(test_iter, text_cnn, epoch, args)
 
     is_best = acc1 > best_acc1
     best_acc1 = max(acc1, best_acc1)
-    output_best = 'Best Acc@1: %.3f\n' % best_acc1
+    output_best = 'Best Acc@1: %.3f' % best_acc1
     if cur_cls_acc is None or is_best:
-	    cur_cls_acc = cls_acc
+	    cur_cls_acc = out_cls_acc
     print(output_best)
-    if args.dataset == 'heybox':
-	    class_dict = {0: 289, 1: 667, 2: 50, 3: 159, 4: 142, 5: 1645, 6: 672, 7: 143, 8: 89, 9: 188, \
-            10: 972, 11: 505, 12: 290, 13: 1174, 14: 545, 15: 2057, 16: 820, 17: 2090}
-        class_acc_dict = {k: {"acc": cur_cls_acc[k], "data_num": v} for k,v in class_dict.items()}
-        sorted_dict = collections.OrderedDict(sorted(class_acc_dict.items(), key=lambda t: t[1]["data_num"]))
-        print('According to the best_acc1 for class accuracy: {}'.format(sorted_dict))
+    print("Best {}\n".format(cur_cls_acc))
 
     save_checkpoint(args, {
             'epoch': epoch + 1,
