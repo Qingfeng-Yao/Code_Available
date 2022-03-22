@@ -2,7 +2,6 @@
 import argparse
 import random
 import time
-import numpy as np
 from sklearn.metrics import confusion_matrix
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
@@ -28,7 +27,9 @@ python=3.5.6
         [python3 train_textcnn.py --exp_str semi_training]
         [best acc: ][cls acc: ]
     自监督分类
-        首先进行预训练，即运行文件
+        首先进行预训练(文本逆序增强)，即运行文件[python3 train_textcnn.py --exp_str pre_training]
+        [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training/ckpt.best.pth.tar]
+        [best acc: ][cls acc: ]
 '''
 
 parser = argparse.ArgumentParser()
@@ -37,6 +38,7 @@ parser.add_argument('--data_path', type=str, default='./data')
 parser.add_argument('--exp_str', default='standard_training', choices=['standard_training', 'semi_training', 'self_training', 'pre_training'],
                     help='(additional) name to indicate experiment')
 parser.add_argument('--device', type=int, default=0, help='device to use for iterate data, -1 mean cpu [default: 0]')
+parser.add_argument('--pretrained_model', type=str, default='', help='for self trainging')
 
 parser.add_argument('--dropout', type=float, default=0.5, help='the probability for dropout [default: 0.5]')
 parser.add_argument('--embedding_dim', type=int, default=128, help='number of embedding dimension [default: 128]')
@@ -104,6 +106,17 @@ if args.cuda:
     text_cnn = text_cnn.cuda()
 optimizer = torch.optim.Adam(text_cnn.parameters(), lr=args.lr)
 
+if args.pretrained_model:
+    checkpoint = torch.load(args.pretrained_model, map_location=torch.device('cuda:{}'.format(str(args.device))))
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in checkpoint['state_dict'].items():
+        if 'linear' not in k and 'fc' not in k:
+            new_state_dict[k] = v
+    text_cnn.load_state_dict(new_state_dict, strict=False)
+    print('===> Pretrained weights found in total: [{}]'.format(len(list(new_state_dict.keys()))))
+    print('===> Pre-trained model loaded: {}'.format(args.pretrained_model))
+
 # cudnn.benchmark = True
 
 def train(train_iter, text_cnn, optimizer, epoch, args):
@@ -121,6 +134,8 @@ def train(train_iter, text_cnn, optimizer, epoch, args):
 
         feature, target = batch.text, batch.label
         feature.data.t_(), target.data.sub_(1)
+        if args.exp_str == 'pre_training':
+            feature, target = reorder(feature)
         if args.cuda:
             feature, target = feature.cuda(), target.cuda()
 
@@ -165,6 +180,8 @@ def validate(val_iter, text_cnn, epoch, args):
         for i, batch in enumerate(val_iter):
             feature, target = batch.text, batch.label
             feature.data.t_(), target.data.sub_(1)
+            if args.exp_str == 'pre_training':
+                feature, target = reorder(feature)
             if args.cuda:
                 feature, target = feature.cuda(), target.cuda()
 
@@ -192,30 +209,37 @@ def validate(val_iter, text_cnn, epoch, args):
                     i, len(val_iter), batch_time=batch_time, loss=losses,
                     top1=top1, top5=top5))
                 print(output)
-        cf = confusion_matrix(all_targets, all_preds).astype(float)
-        cls_cnt = cf.sum(axis=1)
-        cls_hit = np.diag(cf)
-        cls_acc = cls_hit / cls_cnt
-        output = ('Test Results: Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f} Loss {loss.avg:.5f}'
-                  .format(top1=top1, top5=top5, loss=losses))
-        out_cls_acc = 'Test Class Accuracy: %s' % (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x}))
-        print(output)
-        print(out_cls_acc)
 
-    return top1.avg, out_cls_acc
+        if args.exp_str != 'pre_training':
+            cf = confusion_matrix(all_targets, all_preds).astype(float)
+            cls_cnt = cf.sum(axis=1)
+            cls_hit = np.diag(cf)
+            cls_acc = cls_hit / cls_cnt
+            output = ('Test Results: Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f} Loss {loss.avg:.5f}'
+                    .format(top1=top1, top5=top5, loss=losses))
+            out_cls_acc = 'Test Class Accuracy: %s' % (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x}))
+            print(output)
+            print(out_cls_acc)
+            return top1.avg, out_cls_acc
+        else:
+            return top1.avg
 
 cur_cls_acc = None
 for epoch in range(args.start_epoch, args.epochs):
     train(train_iter, text_cnn, optimizer, epoch, args)
-    acc1, out_cls_acc = validate(test_iter, text_cnn, epoch, args)
+    if args.exp_str != 'pre_training':
+        acc1, out_cls_acc = validate(test_iter, text_cnn, epoch, args)
+    else:
+        acc1 = validate(test_iter, text_cnn, epoch, args)
 
     is_best = acc1 > best_acc1
     best_acc1 = max(acc1, best_acc1)
     output_best = 'Best Acc@1: %.3f' % best_acc1
-    if cur_cls_acc is None or is_best:
-	    cur_cls_acc = out_cls_acc
     print(output_best)
-    print("Best {}\n".format(cur_cls_acc))
+    if args.exp_str != 'pre_training':
+        if cur_cls_acc is None or is_best:
+            cur_cls_acc = out_cls_acc
+        print("Best {}\n".format(cur_cls_acc))
 
     save_checkpoint(args, {
             'epoch': epoch + 1,

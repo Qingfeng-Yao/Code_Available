@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 import torch
+import numpy as np
 from torchtext import data
 from torchtext.vocab import Vectors
 
@@ -102,3 +103,14 @@ def accuracy(output, target, topk=(1,)):
             correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
+
+def reorder(inputs):
+    batch = inputs.shape[0]
+    target = torch.Tensor(np.random.permutation([0, 1] * (int(batch / 2) + 1)), device=inputs.device)[:batch]
+    target = target.long()
+    doc = torch.zeros_like(inputs)
+    doc.copy_(inputs)
+    for i in range(batch):
+        doc[i, :] = inputs[i, :] if target[i] else inputs[i, torch.arange(inputs[i].size(0)-1, -1, -1).long()]
+
+    return doc, target
