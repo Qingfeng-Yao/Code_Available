@@ -16,7 +16,7 @@ from dataset.imbalance_cifar import SemiSupervisedImbalanceCIFAR10
 
 '''
 python=3.6.13
-库: torch=1.4.0 torchvision=0.5.0 numpy=1.19.5 tensorboardX=2.5 scikit-learn=0.24.2 
+库: torch==1.4.0 torchvision==0.5.0 numpy==1.19.5 tensorboardX==2.5 scikit-learn==0.24.2 
 统计了top1ACC/top5ACC/类ACC
 
 参考: [https://github.com/YyzHarry/imbalanced-semi-self]
