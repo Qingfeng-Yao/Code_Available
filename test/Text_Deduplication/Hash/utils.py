@@ -6,19 +6,29 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--seed', help='set random seed', type=int, default=123)
+    parser.add_argument('--gpu', default=0, type=int)
+    # model
+    parser.add_argument('--model_name', help='options: tfidf_lsa | simhash', type=str, default='tfidf_lsa')
+    parser.add_argument('--topk', default=-1, type=int, help='Calculate top k data map.(default: all)')
+
+    # tfidf-lda
+    parser.add_argument('--lsa_n_components', type=int, default=200)
+
+    # simhash
+    parser.add_argument('--model_type', help='options: tfidf_vec | keywords', type=str, default='tfidf_vec')
+    parser.add_argument('--code_length', type=int, default=200)
+
+    # thesis
+    parser.add_argument('--thesis', help='whether to use setting in the thesis', action="store_true")
+    # params below is used in the thesis
     # data: heybox
-    parser.add_argument('--big_data', help='whether to use big data. only used in training phase', action="store_true")
     parser.add_argument('--gt_path', type=str, default='heybox/ground_truth/')
     parser.add_argument('--out_path', type=str, default='heybox/cmp/')
     parser.add_argument('--cmp', help='output different pred results from ground truth.', action="store_true")
+    parser.add_argument('--big_data', help='whether to use big data. only used in training phase', action="store_true")
     parser.add_argument('--optim', help='whether to optimize. only used in simhash', action="store_true")
-    # model
-    parser.add_argument('--model_name', help='options: tfidf_lsa | simhash', type=str, default='tfidf_lsa')
-
     # tfidf-lda
     parser.add_argument('--cos_threshold', type=float, default=0.6)
-    parser.add_argument('--lsa_n_components', type=int, default=200)
-
     # simhash
     parser.add_argument('--dis_threshold', type=int, default=35)
 

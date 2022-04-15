@@ -10,19 +10,24 @@ import jieba.posseg as psg
 def extractKeyWord(raw_data, args):
     data = {}
     c = cut_word.CutWord(setting.STOPWORDS_PATH)
-    idf_map, ave_idf = utils.readIdfdict(setting.IDFDICT_PATH)
+    if args.model_type == "keywords":
+        idf_map, ave_idf = utils.readIdfdict(setting.IDFDICT_PATH)
     for id_, text in raw_data.items():
         content = text["content"]
         d = {}
         d["raw"] = content
+        if not args.thesis:
+            d["target"] = text["target"]
         d["text"], d["list"] = c.deal(content)
-        tfidf_map = collections.Counter(d["list"])
-        for k in tfidf_map.keys():
-            if k in idf_map:
-                tfidf_map[k] *= idf_map[k]
-            else:
-                tfidf_map[k] *= ave_idf
-        d["tfidf"] = tfidf_map
+        # 关键词权重计算
+        if args.model_type == "keywords":
+            tfidf_map = collections.Counter(d["list"])
+            for k in tfidf_map.keys():
+                if k in idf_map:
+                    tfidf_map[k] *= idf_map[k]
+                else:
+                    tfidf_map[k] *= ave_idf
+            d["tfidf"] = tfidf_map
         if args.optim:
             d["length"] = text["length"]
 

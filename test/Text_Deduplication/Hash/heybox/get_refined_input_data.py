@@ -10,6 +10,7 @@ if not os.path.exists(input_path):
     os.makedirs(input_path)
 
 input_dict = {}
+num_class = 0
 for root, dirs, files in os.walk(raw_path):
     for f in files:
         if f[-4:] == 'json':
@@ -35,8 +36,12 @@ for root, dirs, files in os.walk(raw_path):
                 input_dict[f.split('.')[0]]["title"] = title
                 input_dict[f.split('.')[0]]["content"] = content
                 input_dict[f.split('.')[0]]["length"] = len(content)
+                input_dict[f.split('.')[0]]["target"] = num_class
+    if len(dirs)==0:    
+        num_class += 1
             
 print("total documents: {}".format(len(input_dict)))
+print("total classes: {}".format(num_class))
 with open(input_path+'/data.json','w',encoding='utf-8') as w_f:
     json.dump(input_dict, w_f, indent=4)
                                 
