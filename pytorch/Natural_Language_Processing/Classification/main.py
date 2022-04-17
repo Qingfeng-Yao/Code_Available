@@ -9,10 +9,24 @@ import train
 import dataset
 
 '''
-参考[https://github.com/bigboNed3/chinese_text_cnn]
-
-python=3.5.6 
-库: torch=1.0.0 torchtext=0.3.1 jieba=0.39
+参考源码:
+    [https://github.com/bigboNed3/chinese_text_cnn]
+运行环境:
+    python=3.5.6 
+    torch=1.0.0 torchtext=0.3.1 jieba=0.39
+核心代码思想: 设置三类具有不同h的filters, 且每类filters都有多个
+    单通道嵌入或双通道嵌入, 嵌入表示多一维表明通道数, 即输入形状如[batch_size, num_channels, sentence_length, emb_dim]
+    三个并行卷积层(对应于不同的h): nn.Conv2d(num_channels, out_dim, height_of_filter, width_of_filter)
+        对应于nn.Conv2d(num_channels, num_filters, window_size, emb_dim), 其中window_size对应论文中的h, emb_dim对应论文中的k
+        输出形状为[batch_size, out_dim, sentence_length-window_size+1, emb_dim-emb_dim+1]
+    激活函数使用F.relu
+    三个并行最大池化层: F.max_pool1d(inputs, kernel_size)
+        输入形状如[batch_size, out_dim, N]
+        一般令kernel_size=N, 这样输出形状为[batch_size, out_dim, 1]
+    连接得到最后表示, 形如[batch_size, 3*num_filters]
+    过全连接层进行分类
+        在全连接之前需要经过nn.Dropout(prob)
+        损失函数使用F.cross_entropy(input, target): softmax在这里计算
 
 中文二分类: 
     下载预训练词向量到文件夹pretrained下[知乎问答sgns.zhihu.word][https://github.com/Embedding/Chinese-Word-Vectors]
