@@ -15,25 +15,30 @@ from losses import LDAMLoss, FocalLoss
 from dataset.imbalance_cifar import SemiSupervisedImbalanceCIFAR10
 
 '''
-python=3.6.13
-库: torch==1.4.0 torchvision==0.5.0 numpy==1.19.5 tensorboardX==2.5 scikit-learn==0.24.2 
-统计了top1ACC/top5ACC/类ACC
+参考源码: 
+    [https://github.com/YyzHarry/imbalanced-semi-self]
+运行环境: 
+    python=3.6.13
+    torch==1.4.0 torchvision==0.5.0 numpy==1.19.5 tensorboardX==2.5 scikit-learn==0.24.2 
+核心代码思想:
+    与train.py类似
+    主要区别在于训练数据集的设置, 即SemiSupervisedImbalanceCIFAR10
+        需要考虑额外未标记数据
 
-参考: [https://github.com/YyzHarry/imbalanced-semi-self]
 
 # cifar10: 
     # 在原始不平衡数据集上训练得到中间分类器 [即使用train.py文件中的标准监督训练]
-    # 需要预先下载对应未标记数据ti_80M[https://drive.google.com/file/d/1SODQBUvv2qycDivBb4nhHaCk3TMzaVM4/view?usp=sharing]
+    # 需要预先下载对应未标记数据ti_80M [https://drive.google.com/file/d/1SODQBUvv2qycDivBb4nhHaCk3TMzaVM4/view?usp=sharing]
     # 然后利用中间分类器生成伪标签 [即使用gen_pseudolabels.py文件]
-    # 组合形成用户半监督训练的数据集，如SemiSupervisedImbalanceCIFAR10
+    # 组合形成用户半监督训练的数据集, 如SemiSupervisedImbalanceCIFAR10
     # 训练实例: python3 train_semi.py --dataset cifar10 --imb_factor 0.01 --imb_factor_unlabel 0.01[模型使用resnet32]
-    # [best acc:72.820]
+    # [best acc:73.620]
 number of per cls for cifar: [5000, 2997, 1796, 1077, 645, 387, 232, 139, 83, 50]
 Unlabeled est total:    62030
 After processing:       62025,  [24999, 14984, 8983, 5384, 3228, 1934, 1156, 693, 415, 249]
 number of per cls for ti80(真实类分布统计): [24999, 14984, 8983, 5384, 3228, 1934, 1156, 693, 415, 249]
 Labeled data extracted: 12406
-Unlabeled data extracted:       74431
+Total data extracted:       74431
 ti80伪类分布和cifar10的真实类分布统计: 30727,18161,10840,6932,3415,2063,1069,760,306,158
 data shape: (74431, 32, 32, 3), label len: 74431
 Files already downloaded and verified
@@ -74,10 +79,7 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true', he
 parser.add_argument('--seed', default=None, type=int, help='seed for initializing training.')
 parser.add_argument('--root_log', type=str, default='log')
 parser.add_argument('--root_model', type=str, default='./checkpoint')
-
 best_acc1 = 0
-
-# parser.print_help()
 
 def main():
     args = parser.parse_args()
@@ -181,7 +183,7 @@ def main_worker(gpu, args):
 
     if args.dataset.startswith(('cifar', 'svhn')):
         cls_num_list = train_dataset.get_cls_num_list()
-        print('cls num list:')
+        print('cls num list for {}:'.format(args.dataset))
         print(cls_num_list)
         args.cls_num_list = cls_num_list
 
@@ -228,7 +230,7 @@ def main_worker(gpu, args):
         best_acc1 = max(acc1, best_acc1)
 
         tf_writer.add_scalar('acc/test_top1_best', best_acc1, epoch)
-        output_best = 'Best Prec@1: %.3f\n' % best_acc1
+        output_best = 'Best acc@1: %.3f\n' % best_acc1
         print(output_best)
         log_testing.write(output_best + '\n')
         log_testing.flush()
@@ -257,7 +259,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args, log, tf_writer
 
         inputs = inputs.cuda()
         target = target.cuda()
-
         output = model(inputs)
         loss = criterion(output, target)
 
@@ -278,8 +279,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args, log, tf_writer
                       'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                       'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                       'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                      'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                      'acc@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+                      'acc@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                 epoch, i, len(train_loader), batch_time=batch_time,
                 data_time=data_time, loss=losses, top1=top1, top5=top5, lr=optimizer.param_groups[-1]['lr'] * 0.1))
             print(output)
@@ -327,8 +328,8 @@ def validate(val_loader, model, criterion, epoch, args, log=None, tf_writer=None
                 output = ('Test: [{0}/{1}]\t'
                           'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                           'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                          'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                          'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                          'acc@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+                          'acc@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                     i, len(val_loader), batch_time=batch_time, loss=losses,
                     top1=top1, top5=top5))
                 print(output)
@@ -336,7 +337,7 @@ def validate(val_loader, model, criterion, epoch, args, log=None, tf_writer=None
         cls_cnt = cf.sum(axis=1)
         cls_hit = np.diag(cf)
         cls_acc = cls_hit / cls_cnt
-        output = ('{flag} Results: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f} Loss {loss.avg:.5f}'
+        output = ('{flag} Results: acc@1 {top1.avg:.3f} acc@5 {top5.avg:.3f} Loss {loss.avg:.5f}'
                   .format(flag=flag, top1=top1, top5=top5, loss=losses))
         out_cls_acc = '%s Class Accuracy: %s' % (
             flag, (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x})))

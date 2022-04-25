@@ -89,13 +89,18 @@ class ResNet(nn.Module):
         self.layer_one_out.requires_grad_()
         self.layer_one_out.retain_grad()
         out = F.relu(self.bn1(self.layer_one_out))
+        # print(out.shape)
         out = self.maxpool(out)
+        # print(out.shape)
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
+        # print(out.shape)
         out = F.avg_pool2d(out, 7)
+        # print(out.shape)
         encoding = out.view(out.size(0), -1)
+        # print(encoding.shape)
         out = self.linear(encoding)
         if self.return_encoding:
             return out, encoding
@@ -159,5 +164,5 @@ def resnet152():
 
 if __name__ == '__main__':
     net = resnet50()
-    y = net(torch.randn(1, 3, 32, 32))
+    y = net(torch.randn(256, 3, 256, 256))
     print(y.size())

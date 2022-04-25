@@ -9,7 +9,7 @@ import numpy as np
 
 import torch
 from torch.utils.data import DataLoader
-from torchvision.datasets import CIFAR10, SVHN
+from torchvision.datasets import CIFAR10
 from torchvision import transforms
 import models
 
@@ -104,8 +104,6 @@ if args.dataset == 'cifar10':
     unlabeled_data = CIFAR10('./data', train=False, transform=transform_val)
     unlabeled_data.data = data['data']
     unlabeled_data.targets = list(data['extrapolated_targets'])
-else:
-    unlabeled_data = SVHN('./data', split='extra', transform=transform_val)
 
 data_loader = torch.utils.data.DataLoader(unlabeled_data,
                                           batch_size=200,
@@ -136,4 +134,4 @@ else:
 out_path = os.path.join(args.output_dir, args.output_filename)
 assert(not os.path.exists(out_path))
 with open(out_path, 'wb') as f:
-        pickle.dump(new_targets, f)
+    pickle.dump(new_targets, f)

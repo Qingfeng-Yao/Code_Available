@@ -15,30 +15,101 @@ from losses import LDAMLoss, FocalLoss
 from dataset.imbalance_cifar import ImbalanceCIFAR10
 
 '''
-python=3.6.13
-库: torch=1.4.0 torchvision=0.5.0 numpy=1.19.5 tensorboardX=2.5 scikit-learn=0.24.2 
-统计了top1ACC/top5ACC/类ACC
+参考源码: 
+    [https://github.com/YyzHarry/imbalanced-semi-self]
+运行环境:
+    python=3.6.13
+    torch=1.4.0 torchvision=0.5.0 numpy=1.19.5 tensorboardX=2.5 scikit-learn=0.24.2 
+核心代码思想:
+    (1)模型
+    resnet: 
+    第1层卷积核大小为7x7, 数目为64, stride=2, padding=3(在输入的两边添加0); BN(64); F.relu; [nn.MaxPool2d(kernel_size=3, stride=2, padding=1)]
+    (前向传播对第1层的输出进行.requires_grad_()和.retain_grad()存疑)
+    包含四个部分: (1)64, stride=1; (2)128, stride=2; (3)256, stride=2; (4)512, stride=2
+    (除了第一部分的stride=1, 其余均为stride=2存疑)
+    平均池化F.avg_pool2d(out, 7)+全连接nn.Linear(512 * expansion, num_classes)
+    不同resnet主要区别在于block类型和每个部分的blocks数目, 前面的数字表示总层数
+        BasicBlock: 每个block共有两层(3x3卷积层+BN), expansion=1(影响特征维度), shortcut策略包括identity和1x1卷积
+        Bottleneck: 每个block共有三层(1x1+3x3+1x1卷积层+BN), expansion=4(影响特征维度), shortcut策略包括identity和1x1卷积
+        18: BasicBlock+[2, 2, 2, 2]: 18=1+2*2*4+1
+        34: BasicBlock+[3, 4, 6, 3]: 34=1+3*2+4*2+6*2+3*2+1
+        50: Bottleneck+[3, 4, 6, 3]: 50=1+3*3+4*3+6*3+3*3+1
+        101: Bottleneck+[3, 4, 23, 3]: 101=1+3*3+4*3+23*3+3*3+1
+        152: Bottleneck+[3, 8, 36, 3]: 152=1+3*3+8*3+36*3+3*3+1
+    resnet_cifar:
+    第1层卷积核大小为3x3, 数目为16, stride=1, padding=1(在输入的两边添加0); BN(16); F.relu
+    包含三个部分: (1)16, stride=1; (2)32, stride=2; (3)64, stride=2
+    平均池化F.avg_pool2d(out, out.size()[3])+全连接nn.Linear(64, num_classes)
+    [权重初始化: 对线性层和卷积层进行初始化, init.kaiming_normal_(m.weight)]
+    不同resnet主要区别在于每个部分的blocks数目, 前面的数字表示总层数
+        BasicBlock: 每个block共有两层(3x3卷积层+BN), expansion=1(影响特征维度), shortcut策略包括identity和补0(F.pad)
+        20: BasicBlock+[3, 3, 3]: 20=1+3*2*3+1
+        32: BasicBlock+[5, 5, 5]: 32=1+5*2*3+1
+        44: BasicBlock+[7, 7, 7]: 44=1+7*2*3+1
+        56: BasicBlock+[9, 9, 9]: 56=1+9*2*3+1
+        110: BasicBlock+[18, 18, 18]: 20=1+18*2*3+1
+        1202: BasicBlock+[200, 200, 200]: 20=1+200*2*3+1
+    预训练模型加载时不需要考虑线性层, 由于维度不一样
+    (2)输入图像
+    利用torchvision.transforms进行图像变换
+        训练数据变换: transforms.RandomCrop+transforms.RandomHorizontalFlip+transforms.ToTensor+transforms.Normalize
+        测试数据变换: transforms.ToTensor+transforms.Normalize
+    训练数据是不平衡的, 测试数据是平衡的
+        ImbalanceCIFAR10: 需要指定不平衡因子imb_factor和不平衡类型imb_type
+        imb_type有三种类型:
+            exp: 每类的样本数呈指数变化
+            step: 只有多数类和少数类两类, 各占图像类别一半
+            ave: 平衡数据
+    数据重采样: 指定torch.utils.data.DataLoader的参数sampler
+        train_sampler = ImbalancedDatasetSampler(train_dataset) # 继承torch.utils.data.sampler.Sampler
+        确定原始数据中每个样本的权重, 重新采样获得新数据集; 每类样本的权重相同, 权重由每类样本数确定
+        每类权重由如下公式确定: (1.0-0.9999)/(1.0-np.power(0.9999, label_to_count)), 对应类别样本数越多, 权重越小
+    (3)训练
+    每个epoch开始调整学习率: adjust_learning_rate
+    是否重加权: per_cls_weights将用于损失函数
+        否: per_cls_weights = None
+        是: 重加权中确定类别权重的方式与重采样中的一致, 即(1.0-0.9999)/(1.0-np.power(0.9999, label_to_count))
+            不过重加权还需要再加一步: per_cls_weights = per_cls_weights / np.sum(per_cls_weights) * len(cls_num_list)
+        DRW: 延迟重加权, 即需要确定重加权的时机, 即与epoch有关
+    损失函数的选择: 
+        交叉熵: 仅考虑正负样本损失的加权
+        focal: 对难易样本损失进行加权, 即针对预测概率进行加权
+        LDAM: 对预测概率重新进行计算, 引入类依赖的margin
+    每个epoch都调用train和validate函数, validate函数输出acc, 判断最优模型并进行模型的存储
+        train函数
+            model.train()
+            batch迭代: 前向传播, 计算损失, 反向传播
+        validate函数
+            model.eval()以及with torch.no_grad()
+            batch迭代: 前向传播
+            指标计算
 
-参考: [https://github.com/YyzHarry/imbalanced-semi-self]
 
-标准监督训练: 原始不平衡数据集(cifar10)+标签信息
-[python3 train.py --dataset cifar10 --imb_factor 0.01 --loss_type CE][模型使用resnet32]
-[best acc:71.070]
+标准监督训练及一些基线模型: 原始不平衡数据集(cifar10)+标签信息
+    [python3 train.py --dataset cifar10 --imb_factor 0.01 --loss_type CE][模型使用resnet32]
+    [best acc:71.930]
+    [python3 train.py --dataset cifar10 --imb_factor 0.01 --loss_type CE --train_rule Resample][模型使用resnet32]
+    [best acc:71.420]
+    [python3 train.py --dataset cifar10 --imb_factor 0.01 --loss_type CE --train_rule Reweight][模型使用resnet32]
+    [best acc:73.100]
+    [python3 train.py --dataset cifar10 --imb_factor 0.01 --loss_type Focal][模型使用resnet32]
+    [best acc:73.210]
+    [python3 train.py --dataset cifar10 --imb_factor 0.01 --loss_type LDAM][模型使用resnet32][LDAM需要使用归一化的线性层]
+    [best acc:73.510]
+    [python3 train.py --dataset cifar10 --imb_factor 0.01 --loss_type LDAM --train_rule DRW][模型使用resnet32]
+    [best acc:76.810]
 
 自监督预训练: 原始不平衡数据集(cifar10)+无标签信息
-首先预训练，然后标准训练
-预训练: [python3 pretrain_rot.py --dataset cifar10 --imb_factor 0.01][模型使用resnet32]
-标准训练: [python train.py --dataset cifar10 --imb_factor 0.01 --pretrained_model <path_to_ssp_model>][模型使用resnet32]
-其中<path_to_ssp_model>的格式如: checkpoint/cifar10_resnet32_CE_None_exp_0.01_pretrain_rot/ckpt.best.pth.tar
-[best acc:72.300]
-
-存疑: 预训练模型下载不考虑线性层的参数
+    首先预训练(pretrain_rot.py), 然后标准训练
+    标准训练: [python train.py --dataset cifar10 --imb_factor 0.01 --loss_type CE --pretrained_model <path_to_ssp_model>][模型使用resnet32]
+    其中<path_to_ssp_model>的格式如: checkpoint/cifar10_resnet32_CE_None_exp_0.01_pretrain_rot/ckpt.best.pth.tar
+    [best acc:72.780]
 '''
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
-
+print(model_names)
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='cifar10', choices=['cifar10', 'cifar100', 'svhn'])
 parser.add_argument('--data_path', type=str, default='./data')
@@ -146,7 +217,7 @@ def main_worker(gpu, args):
         raise NotImplementedError(f"Dataset {args.dataset} is not supported!")
 
     # evaluate only
-    if args.evaluate:
+    if args.evaluate: # 只需要下载训练好的模型, 然后进行验证即可
         assert args.resume, 'Specify a trained model using [args.resume]'
         checkpoint = torch.load(args.resume, map_location=torch.device(f'cuda:{str(args.gpu)}'))
         model.load_state_dict(checkpoint['state_dict'])
@@ -154,7 +225,7 @@ def main_worker(gpu, args):
         validate(val_loader, model, nn.CrossEntropyLoss(), 0, args)
         return
 
-    if args.resume:
+    if args.resume: # 需要下载模型和优化器, 还有开始的epoch和best_acc, 适合中断训练后继续训练
         if os.path.isfile(args.resume):
             print(f"===> Loading checkpoint '{args.resume}'")
             checkpoint = torch.load(args.resume, map_location=torch.device(f'cuda:{str(args.gpu)}'))
@@ -184,7 +255,7 @@ def main_worker(gpu, args):
 
     if args.dataset.startswith(('cifar', 'svhn')):
         cls_num_list = train_dataset.get_cls_num_list()
-        print('cls num list:')
+        print('cls num list for {}:'.format(args.dataset))
         print(cls_num_list)
         args.cls_num_list = cls_num_list
 
@@ -231,7 +302,7 @@ def main_worker(gpu, args):
         best_acc1 = max(acc1, best_acc1)
 
         tf_writer.add_scalar('acc/test_top1_best', best_acc1, epoch)
-        output_best = 'Best Prec@1: %.3f\n' % best_acc1
+        output_best = 'Best acc@1: %.3f\n' % best_acc1
         print(output_best)
         log_testing.write(output_best + '\n')
         log_testing.flush()
@@ -279,8 +350,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args, log, tf_writer
                       'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                       'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                       'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                      'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                      'acc@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+                      'acc@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                 epoch, i, len(train_loader), batch_time=batch_time,
                 data_time=data_time, loss=losses, top1=top1, top5=top5, lr=optimizer.param_groups[-1]['lr'] * 0.1))
             print(output)
@@ -328,8 +399,8 @@ def validate(val_loader, model, criterion, epoch, args, log=None, tf_writer=None
                 output = ('Test: [{0}/{1}]\t'
                           'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                           'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                          'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                          'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                          'acc@1 {top1.val:.3f} ({top1.avg:.3f})\t'
+                          'acc@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                     i, len(val_loader), batch_time=batch_time, loss=losses,
                     top1=top1, top5=top5))
                 print(output)
@@ -337,7 +408,7 @@ def validate(val_loader, model, criterion, epoch, args, log=None, tf_writer=None
         cls_cnt = cf.sum(axis=1)
         cls_hit = np.diag(cf)
         cls_acc = cls_hit / cls_cnt
-        output = ('{flag} Results: Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f} Loss {loss.avg:.5f}'
+        output = ('{flag} Results: acc@1 {top1.avg:.3f} acc@5 {top5.avg:.3f} Loss {loss.avg:.5f}'
                   .format(flag=flag, top1=top1, top5=top5, loss=losses))
         out_cls_acc = '%s Class Accuracy: %s' % (
             flag, (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x})))

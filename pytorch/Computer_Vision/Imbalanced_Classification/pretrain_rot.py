@@ -13,16 +13,15 @@ import torchvision.datasets as datasets
 import models
 from tensorboardX import SummaryWriter
 from utils import *
-from dataset.imbalance_cifar import ImbalanceCIFAR10, ImbalanceCIFAR100
+from dataset.imbalance_cifar import ImbalanceCIFAR10
 
 '''
-预训练: 抛弃原有标签，随机生成新的标签，同时输入做旋转操作，然后进行标准训练
-number of per cls: [5000, 2997, 1796, 1077, 645, 387, 232, 139, 83, 50]
-data shape: (12406, 32, 32, 3), label len: 12406
-val [1000 1000 1000 1000 1000 1000 1000 1000 1000 1000]
-[best acc:83.580]
-
-存疑的地方: 使用的模型是resnet50而不是resnet32; 类别数是4而不是10
+预训练: 抛弃原有标签，随机生成新的标签(共有4类)，同时输入做旋转操作(旋转角度对应于标签)，然后进行标准训练
+    [python3 pretrain_rot.py --dataset cifar10 --imb_factor 0.01 --loss_type CE][模型使用resnet32]
+    number of per cls: [5000, 2997, 1796, 1077, 645, 387, 232, 139, 83, 50]
+    data shape: (12406, 32, 32, 3), label len: 12406
+    val [1000 1000 1000 1000 1000 1000 1000 1000 1000 1000]
+    [best acc:83.340]
 '''
 
 model_names = sorted(name for name in models.__dict__
@@ -165,7 +164,7 @@ def main_worker(gpu, args):
         else:
             per_cls_weights = None
 
-        criterion = nn.CrossEntropyLoss(weight=per_cls_weights).cuda()
+        criterion = nn.CrossEntropyLoss(weight=per_cls_weights).cuda(args.gpu)
 
         train(train_loader, model, criterion, optimizer, epoch, args, log_training, tf_writer)
         acc1 = validate(val_loader, model, criterion, epoch, args, log_testing, tf_writer)
@@ -174,7 +173,7 @@ def main_worker(gpu, args):
         best_acc1 = max(acc1, best_acc1)
 
         tf_writer.add_scalar('acc/test_top1_best', best_acc1, epoch)
-        output_best = 'Best Prec@1: %.3f\n' % best_acc1
+        output_best = 'Best acc@1: %.3f\n' % best_acc1
         print(output_best)
         log_testing.write(output_best + '\n')
         log_testing.flush()
@@ -223,7 +222,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, log, tf_writer
                       'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                       'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                       'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
+                      'acc@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
                 epoch, i, len(train_loader), batch_time=batch_time,
                 data_time=data_time, loss=losses, top1=top1, lr=optimizer.param_groups[-1]['lr'] * 0.1))
             print(output)
@@ -268,10 +267,10 @@ def validate(val_loader, model, criterion, epoch, args, log=None, tf_writer=None
                 output = ('Test: [{0}/{1}]\t'
                           'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                           'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                          'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(i, len(val_loader), batch_time=batch_time,
+                          'acc@1 {top1.val:.3f} ({top1.avg:.3f})'.format(i, len(val_loader), batch_time=batch_time,
                                                                           loss=losses, top1=top1))
                 print(output)
-        output = ('{flag} Results: Prec@1 {top1.avg:.3f} Loss {loss.avg:.5f}'.format(flag=flag, top1=top1, loss=losses))
+        output = ('{flag} Results: acc@1 {top1.avg:.3f} Loss {loss.avg:.5f}'.format(flag=flag, top1=top1, loss=losses))
         print(output)
         if log is not None:
             log.write(output + '\n')

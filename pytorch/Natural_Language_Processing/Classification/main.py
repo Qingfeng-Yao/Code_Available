@@ -18,7 +18,7 @@ import dataset
     单通道嵌入或双通道嵌入, 嵌入表示多一维表明通道数, 即输入形状如[batch_size, num_channels, sentence_length, emb_dim]
     三个并行卷积层(对应于不同的h): nn.Conv2d(num_channels, out_dim, height_of_filter, width_of_filter)
         对应于nn.Conv2d(num_channels, num_filters, window_size, emb_dim), 其中window_size对应论文中的h, emb_dim对应论文中的k
-        输出形状为[batch_size, out_dim, sentence_length-window_size+1, emb_dim-emb_dim+1]
+        输出形状为[batch_size, out_dim, sentence_length-window_size+1, emb_dim-emb_dim+1] # 若有stride参数(步长参数), 输出的高宽需要除以stride再+1
     激活函数使用F.relu
     三个并行最大池化层: F.max_pool1d(inputs, kernel_size)
         输入形状如[batch_size, out_dim, N]

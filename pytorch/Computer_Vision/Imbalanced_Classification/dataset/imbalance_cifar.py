@@ -11,7 +11,7 @@ class ImbalanceCIFAR10(torchvision.datasets.CIFAR10):
     '''
     原始数据和对应标签: self.data, self.targets
     self.num_per_cls_dict: key为类别, value为对应的样本数
-    按照每个类别的样本数依次获取数据和标签得到新的self.data和self.targets，形状分别为(12406, 32, 32, 3)和12406
+    按照每个类别的样本数依次获取数据和标签得到新的self.data和self.targets, 形状分别为(12406, 32, 32, 3)和12406
     '''
 
     def __init__(self, root, imb_type='exp', imb_factor=0.01, rand_number=0, train=True,
@@ -19,9 +19,9 @@ class ImbalanceCIFAR10(torchvision.datasets.CIFAR10):
         super(ImbalanceCIFAR10, self).__init__(root, train, transform, target_transform, download)
         np.random.seed(rand_number)
         img_num_list = self.get_img_num_per_cls(self.cls_num, imb_type, imb_factor)
-        print("number of per cls: {}".format(img_num_list))
+        print("number of per cls for cifar10: {}".format(img_num_list))
         self.gen_imbalanced_data(img_num_list)
-        print("data shape: {}, label len: {}".format(self.data.shape, len(self.targets)))
+        print("cifar10: data shape: {}, label len: {}".format(self.data.shape, len(self.targets)))
 
     def get_img_num_per_cls(self, cls_num, imb_type, imb_factor):
         img_max = len(self.data) / cls_num
@@ -177,7 +177,7 @@ class SemiSupervisedImbalanceCIFAR10(torchvision.datasets.CIFAR10):
         self.data = new_data
         self.targets = new_targets
         assert new_data.shape[0] == len(new_targets), 'Length of data & labels do not match!'
-        print(f"Unlabeled data extracted:\t{len(new_targets)}")
+        print(f"Total data extracted:\t{len(new_targets)}")
         print("ti80伪类分布和cifar10的真实类分布统计\n")
         for i in range(self.cls_num):
             print(self.num_per_cls_dict[i])
