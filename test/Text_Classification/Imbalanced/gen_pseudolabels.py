@@ -9,7 +9,7 @@ import model
 
 '''
 在未标记数据集extra.tsv上生成伪标签
-    [python3 gen_pseudolabels.py --resume xxx]
+    [python3 gen_pseudolabels.py --static --non_static --multichannel --resume xxx]
     其中xxx格式如: checkpoint/heybox_textcnn_standard_training/ckpt.best.pth.tar
 '''
 
@@ -26,6 +26,7 @@ parser.add_argument('--filter_sizes', type=str, default='3,4,5',
                     help='comma-separated filter sizes to use for convolution')
 parser.add_argument('--static', action='store_true', help='whether to use static pre-trained word vectors')
 parser.add_argument('--non_static', action='store_true', help='whether to fine-tune static pre-trained word vectors')
+parser.add_argument('--multichannel', action='store_true', help='whether to use 2 channel of word vectors')
 parser.add_argument('--pretrained_name', type=str, default='sgns.zhihu.word',
                     help='filename of pre-trained word vectors')
 parser.add_argument('--pretrained_path', type=str, default='pretrained', help='path of pre-trained word vectors')
@@ -52,6 +53,9 @@ if args.dataset == 'heybox':
     if args.static:
         args.embedding_dim = text_field.vocab.vectors.size()[-1]
         args.vectors = text_field.vocab.vectors
+    if args.multichannel:
+        args.static = True
+        args.non_static = True
     args.class_num = len(label_field.vocab)
 print("vocabulary_size: {}".format(args.vocabulary_size))
 

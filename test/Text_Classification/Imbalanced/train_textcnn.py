@@ -16,7 +16,7 @@ import model
     [https://github.com/YyzHarry/imbalanced-semi-self]
 运行环境:
     python=3.5.6 
-    库: torch=1.0.0 torchtext=0.3.1 jieba=0.39 scikit-learn
+    库: torch=1.0.0 torchtext=0.3.1 jieba=0.39 scikit-learn six
     注释掉"cudnn.benchmark = True", 否则会出错(存疑)
 核心代码思想: 
     (1)输入数据: 使用torchtext.data
@@ -27,16 +27,18 @@ import model
 不平衡数据heybox的textcnn分类
     将原始数据分成三份: 一份用于训练(不均衡), 一份用于测试(均衡, 每类取100个样本), 还有一份用于半监督(不均衡, 取剩下的30%)
     三份数据均组织成tsv格式
+    以下三个实验[单块小GPU无法成功运行]
     [标准分类]
-        [python3 train_textcnn.py --static --non_static --multichannel][单块小GPU无法成功运行]
+        [python3 train_textcnn.py --static --non_static --multichannel]
         [best acc: 91.278]
     [半监督分类]
         首先进行伪标签的生成, 即运行文件gen_pseudolabels.py
-        [python3 train_textcnn.py --exp_str semi_training]
+        [python3 train_textcnn.py --static --non_static --multichannel --exp_str semi_training]
         [best acc: ]
     [自监督分类]
-        首先进行预训练(文本逆序增强), 即运行文件[python3 train_textcnn.py --exp_str pre_training]
-        [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training/ckpt.best.pth.tar]
+        首先进行预训练(文本数据增强可借助nlpaug)(当前采用的是文本逆序增强)
+            即运行文件[python3 train_textcnn.py --static --non_static --multichannel --exp_str pre_training]
+        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training/ckpt.best.pth.tar]
         [best acc: ]
 '''
 
