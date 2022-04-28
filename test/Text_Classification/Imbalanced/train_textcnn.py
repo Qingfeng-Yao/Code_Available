@@ -2,7 +2,7 @@
 import argparse
 import random
 import time
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
 import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
 import torchtext.data as data
@@ -11,25 +11,33 @@ from utils import *
 import model
 
 '''
-python=3.5.6 
-库: torch=1.0.0 torchtext=0.3.1 jieba=0.39 scikit-learn
-注释掉"cudnn.benchmark = True"，否则会出错
+参考源码:
+    [https://github.com/bigboNed3/chinese_text_cnn]
+    [https://github.com/YyzHarry/imbalanced-semi-self]
+运行环境:
+    python=3.5.6 
+    库: torch=1.0.0 torchtext=0.3.1 jieba=0.39 scikit-learn
+    注释掉"cudnn.benchmark = True", 否则会出错(存疑)
+核心代码思想: 
+    (1)输入数据: 使用torchtext.data
+        先处理数据的目的是获得vocabulary_size
+    (2)模型: 使用TextCNN
+    (3)训练: 每个epoch都调用train和validate函数, validate函数输出acc, 判断最优模型并进行模型的存储
 
 不平衡数据heybox的textcnn分类
-    将原始数据分成三份: 一份用于训练(不均衡)，一份用于测试(均衡，每类取100个样本)，还有一份用于半监督(不均衡，取剩下的30%)
+    将原始数据分成三份: 一份用于训练(不均衡), 一份用于测试(均衡, 每类取100个样本), 还有一份用于半监督(不均衡, 取剩下的30%)
     三份数据均组织成tsv格式
-    标准分类
-        [python3 train_textcnn.py][单块小GPU无法成功运行]
-        [best acc: 91.278][cls acc: [0.800,0.770,0.950,0.960,0.860,0.990,0.910,1.000,0.980,0.990,0.790,0.850,
- 0.870,0.970,0.960,0.970,0.900,0.910]]
-    半监督分类
-        首先进行伪标签的生成，即运行文件gen_pseudolabels.py
+    [标准分类]
+        [python3 train_textcnn.py --static --non_static --multichannel][单块小GPU无法成功运行]
+        [best acc: 91.278]
+    [半监督分类]
+        首先进行伪标签的生成, 即运行文件gen_pseudolabels.py
         [python3 train_textcnn.py --exp_str semi_training]
-        [best acc: ][cls acc: ]
-    自监督分类
-        首先进行预训练(文本逆序增强)，即运行文件[python3 train_textcnn.py --exp_str pre_training]
+        [best acc: ]
+    [自监督分类]
+        首先进行预训练(文本逆序增强), 即运行文件[python3 train_textcnn.py --exp_str pre_training]
         [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training/ckpt.best.pth.tar]
-        [best acc: ][cls acc: ]
+        [best acc: ]
 '''
 
 parser = argparse.ArgumentParser()
@@ -47,6 +55,7 @@ parser.add_argument('--filter_sizes', type=str, default='3,4,5',
                     help='comma-separated filter sizes to use for convolution')
 parser.add_argument('--static', action='store_true', help='whether to use static pre-trained word vectors')
 parser.add_argument('--non_static', action='store_true', help='whether to fine-tune static pre-trained word vectors')
+parser.add_argument('--multichannel', action='store_true', help='whether to use 2 channel of word vectors')
 parser.add_argument('--pretrained_name', type=str, default='sgns.zhihu.word',
                     help='filename of pre-trained word vectors')
 parser.add_argument('--pretrained_path', type=str, default='pretrained', help='path of pre-trained word vectors')
@@ -92,6 +101,9 @@ if args.dataset == 'heybox':
     if args.static:
         args.embedding_dim = text_field.vocab.vectors.size()[-1]
         args.vectors = text_field.vocab.vectors
+    if args.multichannel:
+        args.static = True
+        args.non_static = True
     args.class_num = len(label_field.vocab)
 else:
     raise NotImplementedError("Dataset {} is not supported!".format(args.dataset))
@@ -215,20 +227,25 @@ def validate(val_iter, text_cnn, epoch, args):
             cls_cnt = cf.sum(axis=1)
             cls_hit = np.diag(cf)
             cls_acc = cls_hit / cls_cnt
-            output = ('Test Results: Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f} Loss {loss.avg:.5f}'
-                    .format(top1=top1, top5=top5, loss=losses))
+
+            rs = recall_score(all_targets, all_preds, average='macro')
+            ps = precision_score(all_targets, all_preds, average='macro')
+            fs = f1_score(all_targets, all_preds, average='macro')
+            output = ('Test Results: Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f} Loss {loss.avg:.5f}\
+                 Recall {rs:.3f} Precision {ps:.3f} f1 {fs:.3f}'
+                    .format(top1=top1, top5=top5, loss=losses, rs=rs, ps=ps, fs=fs))
             out_cls_acc = 'Test Class Accuracy: %s' % (np.array2string(cls_acc, separator=',', formatter={'float_kind': lambda x: "%.3f" % x}))
             print(output)
             print(out_cls_acc)
-            return top1.avg, out_cls_acc
+            return top1.avg, out_cls_acc, rs, ps, fs
         else:
             return top1.avg
 
-cur_cls_acc = None
+cur_cls_acc, cur_fs, cur_ps, cur_rs = None, None, None, None 
 for epoch in range(args.start_epoch, args.epochs):
     train(train_iter, text_cnn, optimizer, epoch, args)
     if args.exp_str != 'pre_training':
-        acc1, out_cls_acc = validate(test_iter, text_cnn, epoch, args)
+        acc1, out_cls_acc, out_rs, out_ps, cur_fs = validate(test_iter, text_cnn, epoch, args)
     else:
         acc1 = validate(test_iter, text_cnn, epoch, args)
 
@@ -239,7 +256,9 @@ for epoch in range(args.start_epoch, args.epochs):
     if args.exp_str != 'pre_training':
         if cur_cls_acc is None or is_best:
             cur_cls_acc = out_cls_acc
-        print("Best {}\n".format(cur_cls_acc))
+            cur_rs, cur_ps, cur_fs = out_rs, out_ps, cur_fs
+        print("Best F1 {}, Prec {}, Recall {}".format(cur_fs, cur_ps, cur_rs))
+        print("Best Cls Acc {}\n".format(cur_cls_acc))
 
     save_checkpoint(args, {
             'epoch': epoch + 1,
