@@ -1,4 +1,5 @@
-from torchnlp.word_to_vector import GloVe, FastText
+from torchnlp.word_to_vector import GloVe#, FastText
+from torchtext.vocab import FastText
 
 
 def load_word_vectors(word_vectors_name, embedding_size, word_vectors_cache='../data/word_vectors_cache'):

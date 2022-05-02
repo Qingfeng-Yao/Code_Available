@@ -40,7 +40,7 @@ class CVDDTrainer(BaseTrainer):
         if alpha_scheduler == 'linear':
             self.alphas = np.linspace(.2, 1, 5)
         if alpha_scheduler == 'logarithmic':
-            self.alphas = np.logspace(-4, 0, 5)
+            self.alphas = np.logspace(-4, 0, 5) # 实际中使用的是[0, 0.0001, 0.001, 0.01, 0.1]
         if alpha_scheduler == 'hard':
             self.alphas = [100.0] * 4
 
@@ -76,7 +76,7 @@ class CVDDTrainer(BaseTrainer):
 
             scheduler.step()
             if epoch in self.lr_milestones:
-                logger.info('  LR scheduler: new learning rate is %g' % float(scheduler.get_lr()[0]))
+                logger.info('  LR scheduler: new learning rate is %g' % float(scheduler.get_lr()[0])) # 0.001
 
             if epoch in self.alpha_milestones:
                 net.alpha = float(self.alphas[alpha_i])

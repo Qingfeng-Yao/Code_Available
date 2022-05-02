@@ -38,11 +38,11 @@ class CVDD(object):
             'test_scores': None
         }
 
-    def set_network(self, net_name, dataset, pretrained_model, embedding_size=None, attention_size=150,
+    def set_network(self, net_name, dataset, pretrained_model, embedding_reduction, use_tfidf_weights, embedding_size=None, attention_size=150,
                     n_attention_heads=3):
         """Builds the CVDD network composed of a pretrained_model, the self-attention module, and context vectors."""
         self.net_name = net_name
-        self.net = build_network(net_name, dataset, embedding_size=embedding_size, pretrained_model=pretrained_model,
+        self.net = build_network(net_name, dataset, embedding_reduction=embedding_reduction, use_tfidf_weights=use_tfidf_weights, embedding_size=embedding_size, pretrained_model=pretrained_model,
                                  update_embedding=False, attention_size=attention_size,
                                  n_attention_heads=n_attention_heads)
 

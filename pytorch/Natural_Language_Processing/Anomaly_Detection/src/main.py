@@ -10,35 +10,65 @@ from cvdd import CVDD
 from datasets.main import load_dataset
 
 '''
-参考: [https://github.com/lukasruff/CVDD-PyTorch]
+参考源码: 
+    [https://github.com/lukasruff/CVDD-PyTorch]
+运行环境:
+    python=3.7
+    requirements.txt
+核心代码思想:
+    (1)数据下载: 使用BucketBatchSampler(依据文本长度排序); 使用collate_fn对一个batch中的每一条数据进行重新组织, 得到索引列表, 文本矩阵([seq_len, batch_size]), 标签(torch向量), 权重矩阵([seq_len, batch_size])
+        每个样本以字典的形式存在(key包括text/label/index/weight); 使用torchnlp.datasets.dataset.Dataset包装数据集
+        正常为0, 异常为1; 训练集只包含正常数据
+        reuters: 共7类; 只关注单标签数据; 从nltk获取
+        newsgroups20: 共6类; 预处理后可能会出现文本为空的情况; 均是单标签数据; 从sklearn获取
+        imdb: 共2类; 均是单标签数据; 从torchnlp获取
+    (2)模型: 预训练模型+自注意力模块+上下文向量
+        不更新嵌入
+    (3)训练和测试 
+        训练:
+            初始化上下文向量
+            可对梯度进行裁剪: torch.nn.utils.clip_grad_norm_
+        测试:
+            异常分数就是余弦距离
 
-python=3.7
-库: requirements.txt
 
-文本异常检测+CVDD
-    需要提前建立数据文件夹和日志文件夹，然后进入src运行程序
-    若使用spacy进行分词，则需要python3 -m spacy download en
-	reuters: [python3 main.py reuters cvdd_Net ../log/test_reuters ../data --clean_txt --lr_milestone 40 --pretrained_model GloVe_6B --normal_class 6]
-        Test AUC: 96.63%
-    newsgroups20
-    imdb
+文本异常检测+[CVDD]
+    需要提前建立数据文件夹data和日志文件夹log/test_[data], 然后进入src运行程序
+        如test_reuters/test_newsgroups20/test_imdb
+    若使用spacy进行分词, 则需要python3 -m spacy download en
+	[reuters]: 
+        [python3 main.py reuters cvdd_Net ../log/test_reuters ../data --clean_txt --pretrained_model GloVe_6B --lr_milestone 40 --normal_class 6]
+        [Test AUC: 96.63%]
+        [python3 main.py reuters cvdd_Net ../log/test_reuters ../data --clean_txt --tokenizer bert --pretrained_model bert --lr_milestone 40 --normal_class 6]
+        [Test AUC: 71.21%]
+    [newsgroups20]
+        [python3 main.py newsgroups20 cvdd_Net ../log/test_newsgroups20 ../data --clean_txt --pretrained_model FastText_en --lr_milestone 40 --normal_class 0]
+        使用from torchnlp.word_to_vector import FastText;FastText(language='en', cache=word_vectors_cache)会出现问题: urllib.error.HTTPError: HTTP Error 403: Forbidden
+        可换用from torchtext.vocab import FastText
+        [Test AUC: 74.23%]
+    [imdb]
+        [python3 main.py imdb cvdd_Net ../log/test_imdb ../data --clean_txt --pretrained_model GloVe_42B --lr_milestone 40 --normal_class 0]
+        [Test AUC: 43.64%]
+
 '''
 ################################################################################
 # Settings
 ################################################################################
 @click.command()
 @click.argument('dataset_name', type=click.Choice(['reuters', 'newsgroups20', 'imdb']))
-@click.argument('net_name', type=click.Choice(['cvdd_Net']))
+@click.argument('net_name', type=click.Choice(['cvdd_Net', 'embedding']))
 @click.argument('xp_path', type=click.Path(exists=True))
 @click.argument('data_path', type=click.Path(exists=True))
 @click.option('--load_config', type=click.Path(exists=True), default=None,
               help='Config JSON-file path (default: None).')
 @click.option('--load_model', type=click.Path(exists=True), default=None,
               help='Model file path (default: None).')
-@click.option('--device', type=str, default='cuda', help='Computation device to use ("cpu", "cuda", "cuda:2", etc.).')
+@click.option('--device', type=str, default='cuda:0', help='Computation device to use ("cpu", "cuda", "cuda:2", etc.).')
 @click.option('--seed', type=int, default=1, help='Set seed. If -1, use randomization.')
 @click.option('--tokenizer', default='spacy', type=click.Choice(['spacy', 'bert']), help='Select text tokenizer.')
 @click.option('--clean_txt', is_flag=True, help='Specify if text should be cleaned in a pre-processing step.')
+@click.option('--embedding_reduction', default='none', type=click.Choice(['none', 'mean', 'max']))
+@click.option('--use_tfidf_weights', is_flag=True)
 @click.option('--embedding_size', type=int, default=300, help='Size of the word vector embedding.')
 @click.option('--pretrained_model', default=None,
               type=click.Choice([None, 'GloVe_6B', 'GloVe_42B', 'GloVe_840B', 'GloVe_twitter.27B', 'FastText_en',
@@ -68,7 +98,7 @@ python=3.7
               help='Sets the number of OpenMP threads used for parallelizing CPU operations')
 @click.option('--normal_class', type=int, default=0,
               help='Specify the normal class of the dataset (all other classes are considered anomalous).')
-def main(dataset_name, net_name, xp_path, data_path, load_config, load_model, device, seed, tokenizer, clean_txt,
+def main(dataset_name, net_name, xp_path, data_path, load_config, load_model, device, seed, tokenizer, clean_txt, embedding_reduction, use_tfidf_weights, 
          embedding_size, pretrained_model, ad_score, n_attention_heads, attention_size, lambda_p, alpha_scheduler,
          optimizer_name, lr, n_epochs, lr_milestone, batch_size, weight_decay, n_jobs_dataloader, n_threads,
          normal_class):
@@ -149,6 +179,8 @@ def main(dataset_name, net_name, xp_path, data_path, load_config, load_model, de
     cvdd.set_network(net_name=net_name,
                      dataset=dataset,
                      pretrained_model=cfg.settings['pretrained_model'],
+                     embedding_reduction=cfg.settings['embedding_reduction'],
+                     use_tfidf_weights=cfg.settings['use_tfidf_weights'],
                      embedding_size=cfg.settings['embedding_size'],
                      attention_size=cfg.settings['attention_size'],
                      n_attention_heads=cfg.settings['n_attention_heads'])

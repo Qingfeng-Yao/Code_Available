@@ -5,7 +5,7 @@ from utils.word_vectors import load_word_vectors
 
 
 def build_network(net_name, dataset, embedding_size=None, pretrained_model=None, update_embedding=True,
-                  embedding_reduction='none', use_tfidf_weights=False, normalize_embedding=False,
+                  embedding_reduction='none', use_tfidf_weights=False, normalize_embedding=True,
                   word_vectors_cache='../data/word_vectors_cache', attention_size=100, n_attention_heads=1):
     """Builds the neural network."""
 

@@ -23,7 +23,7 @@ class CVDDNet(BaseNet):
                                             n_attention_heads=n_attention_heads)
 
         # Model parameters
-        self.c = nn.Parameter((torch.rand(1, n_attention_heads, self.hidden_size) - 0.5) * 2)
+        self.c = nn.Parameter((torch.rand(1, n_attention_heads, self.hidden_size) - 0.5) * 2)# [-1,1]
         self.cosine_sim = nn.CosineSimilarity(dim=2)
 
         # Temperature parameter alpha
