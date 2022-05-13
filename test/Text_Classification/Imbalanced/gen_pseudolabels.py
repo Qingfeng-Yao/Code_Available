@@ -8,13 +8,14 @@ from utils import *
 import model
 
 '''
-在未标记数据集extra.tsv上生成伪标签
-    [python3 gen_pseudolabels.py --static --non_static --multichannel --resume xxx]
+在未标记数据集extra_all.tsv上生成伪标签
+    [python3 gen_pseudolabels.py --static --non_static --multichannel --extra_tag all --resume xxx]
     其中xxx格式如: checkpoint/heybox_textcnn_standard_training/ckpt.best.pth.tar
 '''
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='heybox', choices=['heybox'])
+parser.add_argument('--extra_tag', default='all', choices=['all', 'half', 'same', 'onehalf', 'double'])
 parser.add_argument('--data_path', type=str, default='./data')
 parser.add_argument('--device', type=int, default=0, help='device to use for iterate data, -1 mean cpu [default: 0]')
 parser.add_argument('--resume', type=str, default='')
@@ -32,9 +33,7 @@ parser.add_argument('--pretrained_name', type=str, default='sgns.zhihu.word',
 parser.add_argument('--pretrained_path', type=str, default='pretrained', help='path of pre-trained word vectors')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size for training [default: 128]')
 
-parser.add_argument('--data_filename', default='extra.tsv', type=str)
 parser.add_argument('--output_dir', default='./data', type=str)
-parser.add_argument('--output_filename', default='pseudo_train.tsv', type=str)
 
 args = parser.parse_args()
 
@@ -46,7 +45,7 @@ print("Preparing unlabeled data...")
 if args.dataset == 'heybox':
     text_field = data.Field(lower=True)
     label_field = data.Field(sequential=False)
-    _, train_iter, _= load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
+    train_iter = load_extra_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
         text_field, label_field, args, device=args.device, repeat=False, shuffle=True)
 
     args.vocabulary_size = len(text_field.vocab)
@@ -102,12 +101,12 @@ for i, batch in enumerate(train_iter):
 new_extrapolated_targets = np.concatenate(predictions)
 if args.dataset == 'heybox':
     train_file_path = os.path.join(args.data_path, 'heybox', 'input_data', 'train.tsv')
-    out_path = os.path.join(args.output_dir, 'heybox', 'input_data', args.output_filename)
+    out_path = os.path.join(args.output_dir, 'heybox', 'input_data', 'pseudo_train_'+args.extra_tag+".tsv")
     if os.path.exists(out_path):
         os.remove(out_path)
     shutil.copyfile(train_file_path, out_path)
 
-    extra_file_path = os.path.join(args.data_path, 'heybox', 'input_data', args.data_filename)
+    extra_file_path = os.path.join(args.data_path, 'heybox', 'input_data', 'extra_'+args.extra_tag+".tsv")
     extra_data = []
     with open(extra_file_path, 'r') as csvfile:
         csv_reader = csv.reader(csvfile)

@@ -25,12 +25,38 @@ def load_word_vectors(model_name, model_path):
     vectors = Vectors(name=model_name, cache=model_path)
     return vectors
 
+def load_extra_heybox_dataset(path, text_field, label_field, args, **kwargs):
+    text_field.tokenize = word_cut
+    data_name = "extra_"+args.extra_tag+".tsv"
+    train_dataset = data.TabularDataset.splits(
+        path=path, format='tsv', skip_header=True,
+        train=data_name,
+        fields=[
+            ('index', None),
+            ('label', label_field),
+            ('text', text_field)
+        ]
+    )
+    if args.static and args.pretrained_name and args.pretrained_path:
+        vectors = load_word_vectors(args.pretrained_name, args.pretrained_path)
+        text_field.build_vocab(train_dataset, vectors=vectors)
+    else:
+        text_field.build_vocab(train_dataset)
+    label_field.build_vocab(train_dataset)
+    train_iter = data.Iterator.splits(
+        (train_dataset),
+        batch_sizes=(args.batch_size),
+        sort_key=lambda x: len(x.text),
+        **kwargs)
+    return train_iter
+
 def load_heybox_dataset(path, text_field, label_field, args, is_semi=False, **kwargs):
     text_field.tokenize = word_cut
     if is_semi:
-        train_dataset, val_dataset, test_dataset = data.TabularDataset.splits(
+        data_name = 'pseudo_train_'+args.extra_tag+".tsv"
+        train_dataset, test_dataset = data.TabularDataset.splits(
             path=path, format='tsv', skip_header=True,
-            train='pseudo_train.tsv', validation='extra.tsv', test='test.tsv',
+            train=data_name, test='test.tsv',
             fields=[
                 ('index', None),
                 ('label', label_field),
@@ -38,9 +64,9 @@ def load_heybox_dataset(path, text_field, label_field, args, is_semi=False, **kw
             ]
         )
     else:
-        train_dataset, val_dataset, test_dataset = data.TabularDataset.splits(
+        train_dataset, test_dataset = data.TabularDataset.splits(
             path=path, format='tsv', skip_header=True,
-            train='train.tsv', validation='extra.tsv', test='test.tsv',
+            train='train.tsv', test='test.tsv',
             fields=[
                 ('index', None),
                 ('label', label_field),
@@ -49,16 +75,16 @@ def load_heybox_dataset(path, text_field, label_field, args, is_semi=False, **kw
         )
     if args.static and args.pretrained_name and args.pretrained_path:
         vectors = load_word_vectors(args.pretrained_name, args.pretrained_path)
-        text_field.build_vocab(train_dataset, val_dataset, test_dataset, vectors=vectors)
+        text_field.build_vocab(train_dataset, test_dataset, vectors=vectors)
     else:
-        text_field.build_vocab(train_dataset, val_dataset, test_dataset)
-    label_field.build_vocab(train_dataset, val_dataset, test_dataset)
-    train_iter, val_iter, test_iter = data.Iterator.splits(
-        (train_dataset, val_dataset, test_dataset),
-        batch_sizes=(args.batch_size, args.batch_size, 100),
+        text_field.build_vocab(train_dataset, test_dataset)
+    label_field.build_vocab(train_dataset, test_dataset)
+    train_iter, test_iter = data.Iterator.splits(
+        (train_dataset, test_dataset),
+        batch_sizes=(args.batch_size, 20),
         sort_key=lambda x: len(x.text),
         **kwargs)
-    return train_iter, val_iter, test_iter
+    return train_iter, test_iter
 
 def save_checkpoint(args, state, is_best):
     filename = '{}/{}/ckpt.pth.tar'.format(args.root_model, args.store_name)
@@ -104,13 +130,23 @@ def accuracy(output, target, topk=(1,)):
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
-def reorder(inputs):
+def text_aug(inputs, text_aug="reverse"):
     batch = inputs.shape[0]
-    target = torch.Tensor(np.random.permutation([0, 1] * (int(batch / 2) + 1)), device=inputs.device)[:batch]
+    if text_aug == "mix":
+        target = torch.Tensor(np.random.permutation([0, 1, 2, 3, 4] * (int(batch / 5) + 1)), device=inputs.device)[:batch]
+    else:
+        target = torch.Tensor(np.random.permutation([0, 1] * (int(batch / 2) + 1)), device=inputs.device)[:batch]
     target = target.long()
     doc = torch.zeros_like(inputs)
     doc.copy_(inputs)
     for i in range(batch):
-        doc[i, :] = inputs[i, :] if target[i] else inputs[i, torch.arange(inputs[i].size(0)-1, -1, -1).long()]
+        if text_aug == "reverse":
+            doc[i, :] = inputs[i, :] if target[i] else inputs[i, torch.arange(inputs[i].size(0)-1, -1, -1).long()]
+        elif text_aug == "delete":
+            doc[i, :] = inputs[i, :] if target[i] else inputs[i, :-1]
+        elif text_aug == "crop":
+            doc[i, :] = inputs[i, :] if target[i] else inputs[i, :-5]
+        elif text_aug == "exchange":
+            doc[i, :] = inputs[i, :] if target[i] else torch.cat([inputs[i, torch.arange(1, -1, -1).long()], inputs[i, 2:]])
 
     return doc, target

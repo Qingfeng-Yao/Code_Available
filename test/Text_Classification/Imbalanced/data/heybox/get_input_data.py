@@ -42,16 +42,26 @@ for k, v in game_name_dict.items():
     game_dict[k] = {}
     game_dict[k]["english_abbr_name"] = v
     game_dict[k]["content_list"] = get_jsons(os.path.join(data_dir, k))
-    game_dict[k]["test"] = game_dict[k]["content_list"][-100:]
-    res_num = len(game_dict[k]["content_list"][:-100])
-    extra_num = int(0.3*res_num)
-    game_dict[k]["extra"] = game_dict[k]["content_list"][:extra_num]
-    game_dict[k]["train"] = game_dict[k]["content_list"][extra_num:-100]
+    game_dict[k]["test"] = game_dict[k]["content_list"][-20:]
+    res_num = len(game_dict[k]["content_list"][:-20])
+    train_num = int(0.3*res_num)
+    extra_half_num = int(0.45*res_num)
+    extra_same_num = int(0.6*res_num)
+    extra_onehalf_num = int(0.75*res_num)
+    extra_double_num = int(0.9*res_num)
+    game_dict[k]["train"] = game_dict[k]["content_list"][:train_num]
+    game_dict[k]["extra_all"] = game_dict[k]["content_list"][train_num:-20]
+    game_dict[k]["extra_half"] = game_dict[k]["content_list"][train_num:extra_half_num]
+    game_dict[k]["extra_same"] = game_dict[k]["content_list"][train_num:extra_same_num]
+    game_dict[k]["extra_onehalf"] = game_dict[k]["content_list"][train_num:extra_onehalf_num]
+    game_dict[k]["extra_double"] = game_dict[k]["content_list"][train_num:extra_double_num]
 sorted_dict = collections.OrderedDict(sorted(game_dict.items(), key=lambda t: len(t[1]["content_list"])))
 for k, v in sorted_dict.items():
-    print("{}: total/{}, train/{}, test/{}, extra/{}".format(k, len(v["content_list"]), len(v["train"]), len(v["test"]), len(v["extra"])))
+    print("{}: total/{}, train/{}, test/{}, extra_all/{}".format(k, len(v["content_list"]), len(v["train"]), len(v["test"]), len(v["extra_all"])))
+    print("{}: extra_half/{}, extra_same/{}, extra_onehalf/{}, extra_double/{}".format(k, len(v["extra_half"]), len(v["extra_same"]), len(v["extra_onehalf"]), len(v["extra_double"])))
 
-train_label, data_train, test_label, data_test, extra_label, data_extra = [], [], [], [], [], []
+train_label, data_train, test_label, data_test, extra_all_label, data_extra_all = [], [], [], [], [], []
+extra_half_label, data_extra_half, extra_same_label, data_extra_same, extra_onehalf_label, data_extra_onehalf, extra_double_label, data_extra_double = [], [], [], [], [], [], [], []
 for k, v in game_dict.items():
     label = label_dict[v["english_abbr_name"]]
     for tr in v["train"]:
@@ -60,9 +70,21 @@ for k, v in game_dict.items():
     for te in v["test"]:
         data_test.append(clean_text(te, stopwords))
         test_label.append(label)
-    for ex in v["extra"]:
-        data_extra.append(clean_text(ex, stopwords))
-        extra_label.append(label)
+    for ex in v["extra_all"]:
+        data_extra_all.append(clean_text(ex, stopwords))
+        extra_all_label.append(label)
+    for ex in v["extra_half"]:
+        data_extra_half.append(clean_text(ex, stopwords))
+        extra_half_label.append(label)
+    for ex in v["extra_same"]:
+        data_extra_same.append(clean_text(ex, stopwords))
+        extra_same_label.append(label)
+    for ex in v["extra_onehalf"]:
+        data_extra_onehalf.append(clean_text(ex, stopwords))
+        extra_onehalf_label.append(label)
+    for ex in v["extra_double"]:
+        data_extra_double.append(clean_text(ex, stopwords))
+        extra_double_label.append(label)
 
 output_path = "input_data/"
 if not os.path.exists(output_path):
@@ -80,8 +102,32 @@ with open(output_path+'test.tsv', 'w') as f:
     for i in range(len(data_test)):
         tsv_w.writerow([i, test_label[i], data_test[i]]) 
 
-with open(output_path+'extra.tsv', 'w') as f:
+with open(output_path+'extra_all.tsv', 'w') as f:
     tsv_w = csv.writer(f, delimiter='\t')
     tsv_w.writerow(['', 'label', 'text'])
-    for i in range(len(data_extra)):
-        tsv_w.writerow([i, extra_label[i], data_extra[i]]) 
+    for i in range(len(data_extra_all)):
+        tsv_w.writerow([i, extra_all_label[i], data_extra_all[i]]) 
+
+with open(output_path+'extra_half.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['', 'label', 'text'])
+    for i in range(len(data_extra_half)):
+        tsv_w.writerow([i, extra_half_label[i], data_extra_half[i]]) 
+
+with open(output_path+'extra_same.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['', 'label', 'text'])
+    for i in range(len(data_extra_same)):
+        tsv_w.writerow([i, extra_same_label[i], data_extra_same[i]]) 
+
+with open(output_path+'extra_onehalf.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['', 'label', 'text'])
+    for i in range(len(data_extra_onehalf)):
+        tsv_w.writerow([i, extra_onehalf_label[i], data_extra_onehalf[i]]) 
+
+with open(output_path+'extra_double.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['', 'label', 'text'])
+    for i in range(len(data_extra_double)):
+        tsv_w.writerow([i, extra_double_label[i], data_extra_double[i]]) 

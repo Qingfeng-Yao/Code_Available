@@ -25,28 +25,38 @@ import model
     (3)训练: 每个epoch都调用train和validate函数, validate函数输出acc, 判断最优模型并进行模型的存储
 
 不平衡数据heybox的textcnn分类
-    将原始数据分成三份: 一份用于训练(不均衡), 一份用于测试(均衡, 每类取100个样本), 还有一份用于半监督(不均衡, 取剩下的30%)
+    将原始数据分成三份: 一份用于训练(不均衡), 一份用于测试(均衡), 还有一份用于半监督(不均衡)
     三份数据均组织成tsv格式
     以下三个实验[单块小GPU无法成功运行]
     [标准分类]
-        [python3 train_textcnn.py --static --non_static --multichannel]
-        [best acc: 91.278]
+        [python3 train_textcnn.py --static --non_static --multichannel --epochs 50]
+        [best acc: 92.889/f1: 92.106/prec: 93.386/recall: 92.889]
     [半监督分类]
         首先进行伪标签的生成, 即运行文件gen_pseudolabels.py
-        [python3 train_textcnn.py --static --non_static --multichannel --exp_str semi_training]
-        [best acc: ]
+        [python3 train_textcnn.py --static --non_static --multichannel --extra_tag all --exp_str semi_training --epochs 50]
+            [best acc: 86.611/f1: 79.683/prec: 87.788/recall: 86.611]
     [自监督分类]
-        首先进行预训练(文本数据增强可借助nlpaug)(当前采用的是文本逆序增强)
-            即运行文件[python3 train_textcnn.py --static --non_static --multichannel --exp_str pre_training]
-        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training/ckpt.best.pth.tar]
-        [best acc: ]
+        首先进行预训练(文本数据增强可借助nlpaug的思想)
+            即运行文件:
+                文本逆序增强: [python3 train_textcnn.py --static --non_static --multichannel --text_aug reverse --exp_str pre_training --epochs 50]
+                删除文本词: [python3 train_textcnn.py --static --non_static --multichannel --text_aug delete --exp_str pre_training --epochs 50]
+                删除一组文本词: [python3 train_textcnn.py --static --non_static --multichannel --text_aug crop --exp_str pre_training --epochs 50]
+                交换词: [python3 train_textcnn.py --static --non_static --multichannel --text_aug exchange --exp_str pre_training --epochs 50]
+        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_reverse/ckpt.best.pth.tar --epochs 50]
+            [best acc: 92.778/f1: 91.702/prec: 93.303/recall: 92.778]
+    [自监督分类+半监督分类]
+        首先利用自监督学习到的模型初始化
+        然后进行半监督训练
 '''
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='heybox', choices=['heybox'])
+parser.add_argument('--extra_tag', default='all', choices=['all', 'half', 'same', 'onehalf', 'double'])
 parser.add_argument('--data_path', type=str, default='./data')
 parser.add_argument('--exp_str', default='standard_training', choices=['standard_training', 'semi_training', 'self_training', 'pre_training'],
                     help='(additional) name to indicate experiment')
+parser.add_argument('--text_aug', default='reverse', choices=['reverse', 'delete', 'crop', 'exchange', 'mix'],
+                    help='text augmentation methods')
 parser.add_argument('--device', type=int, default=0, help='device to use for iterate data, -1 mean cpu [default: 0]')
 parser.add_argument('--pretrained_model', type=str, default='', help='for self trainging')
 
@@ -75,6 +85,8 @@ args = parser.parse_args()
 best_acc1 = 0
 
 args.store_name = '_'.join([args.dataset, 'textcnn', args.exp_str])
+if args.exp_str == 'pre_training':
+    args.store_name += '_'+args.text_aug
 prepare_folders(args)
 if args.seed is not None:
     random.seed(args.seed)
@@ -93,10 +105,10 @@ if args.dataset == 'heybox':
     text_field = data.Field(lower=True)
     label_field = data.Field(sequential=False)
     if args.exp_str == 'semi_training':
-        train_iter, _, test_iter = load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
+        train_iter, test_iter = load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
             text_field, label_field, args, is_semi=True, device=args.device, repeat=False, shuffle=True)
     else:
-        train_iter, _, test_iter = load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
+        train_iter, test_iter = load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
             text_field, label_field, args, device=args.device, repeat=False, shuffle=True)
     
     args.vocabulary_size = len(text_field.vocab)
@@ -149,7 +161,7 @@ def train(train_iter, text_cnn, optimizer, epoch, args):
         feature, target = batch.text, batch.label
         feature.data.t_(), target.data.sub_(1)
         if args.exp_str == 'pre_training':
-            feature, target = reorder(feature)
+            feature, target = text_aug(feature, args.text_aug)
         if args.cuda:
             feature, target = feature.cuda(), target.cuda()
 
