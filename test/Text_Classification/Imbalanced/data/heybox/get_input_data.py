@@ -7,24 +7,7 @@ from preprocess import *
 
 '''
 不平衡数据的组织
-    刀塔霸业:            total/171, train/50, test/100, extra/21
-    命运2:              total/227, train/89, test/100, extra/38
-    怪物猎人世界:         total/302, train/142, test/100, extra/60
-    炉石传说：魔兽英雄传:  total/304, train/143, test/100, extra/61
-    刀塔自走棋:          total/326, train/159, test/100, extra/67
-    魔兽世界:            total/368, train/188, test/100, extra/80
-    彩虹六号围攻:         total/512, train/289, test/100, extra/123
-    数码硬件:            total/513, train/290, test/100, extra/123
-    守望先锋:            total/821, train/505, test/100, extra/216
-    云顶之弈:            total/878, train/545, test/100, extra/233
-    刀塔2:              total/1052, train/667, test/100, extra/285
-    绝地求生:            total/1059, train/672, test/100, extra/287
-    CS:GO:              total/1271, train/820, test/100, extra/351
-    手机游戏:            total/1488, train/972, test/100, extra/416
-    英雄联盟:            total/1776, train/1174, test/100, extra/502
-    盒友杂谈:             total/2450, train/1645, test/100, extra/705
-    主机游戏:             total/3038, train/2057, test/100, extra/881
-    PC游戏:              total/3085, train/2090, test/100, extra/895
+    
 '''
 
 stopwords_path = 'stopwords.txt'
@@ -49,21 +32,158 @@ for k, v in game_name_dict.items():
     extra_same_num = int(0.6*res_num)
     extra_onehalf_num = int(0.75*res_num)
     extra_double_num = int(0.9*res_num)
+    game_dict[k]["train_extra"] = game_dict[k]["content_list"][:-20]
+    game_dict[k]["extra_b_60"] = game_dict[k]["content_list"][train_num:train_num+60] # 各个类别取60
+
+    # 总数与extra_b_60一致, 70-106分别对应最小类的样本数
+    if v == "rainbow":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+62]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+65]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+67]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+70]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+72]
+    elif v == "daota2":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+59]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+57]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+57]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+55]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+54]
+    elif v == "daotabaye":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+70]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+80]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+90]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+100]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+106]
+    elif v == "daotazizouqi":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+64]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+70]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+75]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+80]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+83]
+    elif v == "monster":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+66]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+75]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+83]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+90]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+94]
+    elif v == "zatan":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+54]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+45]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+37]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+30]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+26]
+    elif v == "qiusheng":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+58]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+55]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+53]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+50]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+48]
+    elif v == "lushi":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+65]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+73]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+79]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+85]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+88]
+    elif v == "mingyun2":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+68]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+78]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+87]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+95]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+100]
+    elif v == "world":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+63]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+68]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+71]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+75]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+77]
+    elif v == "mobile":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+56]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+50]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+45]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+40]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+37]
+    elif v == "xianfeng":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+60]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+60]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+60]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+60]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+60]
+    elif v == "cloud":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+60]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+60]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+60]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+60]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+60]
+    elif v == "hardware":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+61]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+63]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+63]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+65]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+66]
+    elif v == "union":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+55]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+47]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+41]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+35]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+32]
+    elif v == "zhuji":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+52]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+42]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+33]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+25]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+20]
+    elif v == "csgo":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+57]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+52]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+49]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+45]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+43]
+    elif v == "pc":
+        game_dict[k]["extra_b_60_70"] = game_dict[k]["content_list"][train_num:train_num+50]
+        game_dict[k]["extra_b_60_80"] = game_dict[k]["content_list"][train_num:train_num+40]
+        game_dict[k]["extra_b_60_90"] = game_dict[k]["content_list"][train_num:train_num+30]
+        game_dict[k]["extra_b_60_100"] = game_dict[k]["content_list"][train_num:train_num+20]
+        game_dict[k]["extra_b_60_106"] = game_dict[k]["content_list"][train_num:train_num+14]
+    
+
     game_dict[k]["train"] = game_dict[k]["content_list"][:train_num]
     game_dict[k]["extra_all"] = game_dict[k]["content_list"][train_num:-20]
-    game_dict[k]["extra_half"] = game_dict[k]["content_list"][train_num:extra_half_num]
-    game_dict[k]["extra_same"] = game_dict[k]["content_list"][train_num:extra_same_num]
-    game_dict[k]["extra_onehalf"] = game_dict[k]["content_list"][train_num:extra_onehalf_num]
-    game_dict[k]["extra_double"] = game_dict[k]["content_list"][train_num:extra_double_num]
+
 sorted_dict = collections.OrderedDict(sorted(game_dict.items(), key=lambda t: len(t[1]["content_list"])))
 for k, v in sorted_dict.items():
     print("{}: total/{}, train/{}, test/{}, extra_all/{}".format(k, len(v["content_list"]), len(v["train"]), len(v["test"]), len(v["extra_all"])))
-    print("{}: extra_half/{}, extra_same/{}, extra_onehalf/{}, extra_double/{}".format(k, len(v["extra_half"]), len(v["extra_same"]), len(v["extra_onehalf"]), len(v["extra_double"])))
 
+
+train_extra_label, data_train_extra = [], []
+extra_b_60_label, data_extra_b_60 = [], []
+extra_b_60_70_label, data_extra_b_60_70, extra_b_60_80_label, data_extra_b_60_80, extra_b_60_90_label, data_extra_b_60_90, extra_b_60_100_label, data_extra_b_60_100, extra_b_60_106_label, data_extra_b_60_106 = [], [], [], [], [], [], [], [], [], []
 train_label, data_train, test_label, data_test, extra_all_label, data_extra_all = [], [], [], [], [], []
-extra_half_label, data_extra_half, extra_same_label, data_extra_same, extra_onehalf_label, data_extra_onehalf, extra_double_label, data_extra_double = [], [], [], [], [], [], [], []
 for k, v in game_dict.items():
     label = label_dict[v["english_abbr_name"]]
+    for tr in v["train_extra"]:
+        data_train_extra.append(clean_text(tr, stopwords))
+        train_extra_label.append(label)
+
+    for tr in v["extra_b_60"]:
+        data_extra_b_60.append(clean_text(tr, stopwords))
+        extra_b_60_label.append(label)
+
+    for tr in v["extra_b_60_70"]:
+        data_extra_b_60_70.append(clean_text(tr, stopwords))
+        extra_b_60_70_label.append(label)
+    for tr in v["extra_b_60_80"]:
+        data_extra_b_60_80.append(clean_text(tr, stopwords))
+        extra_b_60_80_label.append(label)
+    for tr in v["extra_b_60_90"]:
+        data_extra_b_60_90.append(clean_text(tr, stopwords))
+        extra_b_60_90_label.append(label)
+    for tr in v["extra_b_60_100"]:
+        data_extra_b_60_100.append(clean_text(tr, stopwords))
+        extra_b_60_100_label.append(label)
+    for tr in v["extra_b_60_106"]:
+        data_extra_b_60_106.append(clean_text(tr, stopwords))
+        extra_b_60_106_label.append(label)
+
     for tr in v["train"]:
         data_train.append(clean_text(tr, stopwords))
         train_label.append(label)
@@ -73,61 +193,67 @@ for k, v in game_dict.items():
     for ex in v["extra_all"]:
         data_extra_all.append(clean_text(ex, stopwords))
         extra_all_label.append(label)
-    for ex in v["extra_half"]:
-        data_extra_half.append(clean_text(ex, stopwords))
-        extra_half_label.append(label)
-    for ex in v["extra_same"]:
-        data_extra_same.append(clean_text(ex, stopwords))
-        extra_same_label.append(label)
-    for ex in v["extra_onehalf"]:
-        data_extra_onehalf.append(clean_text(ex, stopwords))
-        extra_onehalf_label.append(label)
-    for ex in v["extra_double"]:
-        data_extra_double.append(clean_text(ex, stopwords))
-        extra_double_label.append(label)
 
 output_path = "input_data/"
 if not os.path.exists(output_path):
     os.mkdir(output_path)
 
+with open(output_path+'train_extra.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['index', 'label', 'text'])
+    for i in range(len(data_train_extra)):
+        tsv_w.writerow([i, train_extra_label[i], data_train_extra[i]]) 
+
+with open(output_path+'extra_b_60.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['index', 'label', 'text'])
+    for i in range(len(data_extra_b_60)):
+        tsv_w.writerow([i, extra_b_60_label[i], data_extra_b_60[i]]) 
+
+with open(output_path+'extra_b_60_70.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['index', 'label', 'text'])
+    for i in range(len(data_extra_b_60_70)):
+        tsv_w.writerow([i, extra_b_60_70_label[i], data_extra_b_60_70[i]]) 
+
+with open(output_path+'extra_b_60_80.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['index', 'label', 'text'])
+    for i in range(len(data_extra_b_60_80)):
+        tsv_w.writerow([i, extra_b_60_80_label[i], data_extra_b_60_80[i]]) 
+
+with open(output_path+'extra_b_60_90.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['index', 'label', 'text'])
+    for i in range(len(data_extra_b_60_90)):
+        tsv_w.writerow([i, extra_b_60_90_label[i], data_extra_b_60_90[i]]) 
+
+with open(output_path+'extra_b_60_100.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['index', 'label', 'text'])
+    for i in range(len(data_extra_b_60_100)):
+        tsv_w.writerow([i, extra_b_60_100_label[i], data_extra_b_60_100[i]]) 
+
+with open(output_path+'extra_b_60_106.tsv', 'w') as f:
+    tsv_w = csv.writer(f, delimiter='\t')
+    tsv_w.writerow(['index', 'label', 'text'])
+    for i in range(len(data_extra_b_60_106)):
+        tsv_w.writerow([i, extra_b_60_106_label[i], data_extra_b_60_106[i]]) 
+
 with open(output_path+'train.tsv', 'w') as f:
     tsv_w = csv.writer(f, delimiter='\t')
-    tsv_w.writerow(['', 'label', 'text'])
+    tsv_w.writerow(['index', 'label', 'text'])
     for i in range(len(data_train)):
         tsv_w.writerow([i, train_label[i], data_train[i]]) 
 
 with open(output_path+'test.tsv', 'w') as f:
     tsv_w = csv.writer(f, delimiter='\t')
-    tsv_w.writerow(['', 'label', 'text'])
+    tsv_w.writerow(['index', 'label', 'text'])
     for i in range(len(data_test)):
         tsv_w.writerow([i, test_label[i], data_test[i]]) 
 
 with open(output_path+'extra_all.tsv', 'w') as f:
     tsv_w = csv.writer(f, delimiter='\t')
-    tsv_w.writerow(['', 'label', 'text'])
+    tsv_w.writerow(['index', 'label', 'text'])
     for i in range(len(data_extra_all)):
         tsv_w.writerow([i, extra_all_label[i], data_extra_all[i]]) 
-
-with open(output_path+'extra_half.tsv', 'w') as f:
-    tsv_w = csv.writer(f, delimiter='\t')
-    tsv_w.writerow(['', 'label', 'text'])
-    for i in range(len(data_extra_half)):
-        tsv_w.writerow([i, extra_half_label[i], data_extra_half[i]]) 
-
-with open(output_path+'extra_same.tsv', 'w') as f:
-    tsv_w = csv.writer(f, delimiter='\t')
-    tsv_w.writerow(['', 'label', 'text'])
-    for i in range(len(data_extra_same)):
-        tsv_w.writerow([i, extra_same_label[i], data_extra_same[i]]) 
-
-with open(output_path+'extra_onehalf.tsv', 'w') as f:
-    tsv_w = csv.writer(f, delimiter='\t')
-    tsv_w.writerow(['', 'label', 'text'])
-    for i in range(len(data_extra_onehalf)):
-        tsv_w.writerow([i, extra_onehalf_label[i], data_extra_onehalf[i]]) 
-
-with open(output_path+'extra_double.tsv', 'w') as f:
-    tsv_w = csv.writer(f, delimiter='\t')
-    tsv_w.writerow(['', 'label', 'text'])
-    for i in range(len(data_extra_double)):
-        tsv_w.writerow([i, extra_double_label[i], data_extra_double[i]]) 

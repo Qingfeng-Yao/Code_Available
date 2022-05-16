@@ -8,14 +8,18 @@ from utils import *
 import model
 
 '''
-在未标记数据集extra_all.tsv上生成伪标签
-    [python3 gen_pseudolabels.py --static --non_static --multichannel --extra_tag all --resume xxx]
-    其中xxx格式如: checkpoint/heybox_textcnn_standard_training/ckpt.best.pth.tar
+在未标记数据集上生成伪标签
+    extra_b_60.tsv: [python3 gen_pseudolabels.py --extra_tag b_60 --resume checkpoint/heybox_textcnn_standard_training/ckpt.best.pth.tar]
+    extra_b_60_70.tsv: [python3 gen_pseudolabels.py --extra_tag b_60_70 --resume checkpoint/heybox_textcnn_standard_training/ckpt.best.pth.tar]
+    extra_b_60_80.tsv: [python3 gen_pseudolabels.py --extra_tag b_60_80 --resume checkpoint/heybox_textcnn_standard_training/ckpt.best.pth.tar]
+    extra_b_60_90.tsv: [python3 gen_pseudolabels.py --extra_tag b_60_90 --resume checkpoint/heybox_textcnn_standard_training/ckpt.best.pth.tar]
+    extra_b_60_100.tsv: [python3 gen_pseudolabels.py --extra_tag b_60_100 --resume checkpoint/heybox_textcnn_standard_training/ckpt.best.pth.tar]
+    extra_b_60_106.tsv: [python3 gen_pseudolabels.py --extra_tag b_60_106 --resume checkpoint/heybox_textcnn_standard_training/ckpt.best.pth.tar]
 '''
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='heybox', choices=['heybox'])
-parser.add_argument('--extra_tag', default='all', choices=['all', 'half', 'same', 'onehalf', 'double'])
+parser.add_argument('--extra_tag', default='b_60')
 parser.add_argument('--data_path', type=str, default='./data')
 parser.add_argument('--device', type=int, default=0, help='device to use for iterate data, -1 mean cpu [default: 0]')
 parser.add_argument('--resume', type=str, default='')
@@ -45,8 +49,9 @@ print("Preparing unlabeled data...")
 if args.dataset == 'heybox':
     text_field = data.Field(lower=True)
     label_field = data.Field(sequential=False)
+    index_field = data.Field(sequential=False)
     train_iter = load_extra_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
-        text_field, label_field, args, device=args.device, repeat=False, shuffle=True)
+        text_field, label_field, index_field, args, device=args.device, repeat=False, shuffle=True)
 
     args.vocabulary_size = len(text_field.vocab)
     if args.static:
@@ -57,6 +62,7 @@ if args.dataset == 'heybox':
         args.non_static = True
     args.class_num = len(label_field.vocab)
 print("vocabulary_size: {}".format(args.vocabulary_size))
+print("index size: {}".format(len(index_field.vocab)))
 
 print("===> Creating and loading model textcnn")
 args.cuda = args.device != -1 and torch.cuda.is_available()
@@ -85,8 +91,10 @@ else:
 text_cnn.eval()
 
 print("Running model on unlabeled data...")
-predictions, truths = [], []
+predictions, indexes = [], []
 for i, batch in enumerate(train_iter):
+    index = batch.index
+    index.data.sub_(1)
     feature = batch.text
     feature.data.t_()
     if args.cuda:
@@ -94,11 +102,13 @@ for i, batch in enumerate(train_iter):
     _, preds = torch.max(text_cnn(feature), dim=1)
 
     predictions.append(preds.cpu().numpy())
+    indexes.append(index.cpu().numpy())
 
     if (i+1) % 10 == 0:
         print('Done %d/%d' % (i+1, len(train_iter)))
 
 new_extrapolated_targets = np.concatenate(predictions)
+true_indexes = np.concatenate(indexes)
 if args.dataset == 'heybox':
     train_file_path = os.path.join(args.data_path, 'heybox', 'input_data', 'train.tsv')
     out_path = os.path.join(args.output_dir, 'heybox', 'input_data', 'pseudo_train_'+args.extra_tag+".tsv")
@@ -119,8 +129,8 @@ if args.dataset == 'heybox':
 
     with open(out_path, 'a') as f:
         tsv_w = csv.writer(f, delimiter='\t')
-        for i in range(len(extra_data)):
-            tsv_w.writerow([i, new_extrapolated_targets[i], extra_data[i]]) 
+        for i in range(len(new_extrapolated_targets)):
+            tsv_w.writerow([i, new_extrapolated_targets[i], extra_data[true_indexes[i]]]) 
 
         
     

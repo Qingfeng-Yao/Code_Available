@@ -28,32 +28,62 @@ import model
     将原始数据分成三份: 一份用于训练(不均衡), 一份用于测试(均衡), 还有一份用于半监督(不均衡)
     三份数据均组织成tsv格式
     以下三个实验[单块小GPU无法成功运行]
+    总词汇表大小: 234675
     [标准分类]
-        [python3 train_textcnn.py --static --non_static --multichannel --epochs 50]
-        [best acc: 92.889/f1: 92.106/prec: 93.386/recall: 92.889]
+        [python3 train_textcnn.py --epochs 50]
+            [best acc: 88.611]
     [半监督分类]
         首先进行伪标签的生成, 即运行文件gen_pseudolabels.py
-        [python3 train_textcnn.py --static --non_static --multichannel --extra_tag all --exp_str semi_training --epochs 50]
-            [best acc: 86.611/f1: 79.683/prec: 87.788/recall: 86.611]
+        [python3 train_textcnn.py --extra_tag b_60 --exp_str semi_training --epochs 50]
+            [best acc: 91.389]
+        [python3 train_textcnn.py --extra_tag b_60_70 --exp_str semi_training --epochs 50]
+            [best acc: 91.111]
+        [python3 train_textcnn.py --extra_tag b_60_80 --exp_str semi_training --epochs 50]
+            [best acc: 90.833]
+        [python3 train_textcnn.py --extra_tag b_60_90 --exp_str semi_training --epochs 50]
+            [best acc: 90.833]
+        [python3 train_textcnn.py --extra_tag b_60_100 --exp_str semi_training --epochs 50]
+            [best acc: 91.667]
+        [python3 train_textcnn.py --extra_tag b_60_106 --exp_str semi_training --epochs 50]
+            [best acc: 90.556]
     [自监督分类]
         首先进行预训练(文本数据增强可借助nlpaug的思想)
             即运行文件:
-                文本逆序增强: [python3 train_textcnn.py --static --non_static --multichannel --text_aug reverse --exp_str pre_training --epochs 50]
-                删除文本词: [python3 train_textcnn.py --static --non_static --multichannel --text_aug delete --exp_str pre_training --epochs 50]
-                删除一组文本词: [python3 train_textcnn.py --static --non_static --multichannel --text_aug crop --exp_str pre_training --epochs 50]
-                交换词: [python3 train_textcnn.py --static --non_static --multichannel --text_aug exchange --exp_str pre_training --epochs 50]
-        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_reverse/ckpt.best.pth.tar --epochs 50]
-            [best acc: 92.778/f1: 91.702/prec: 93.303/recall: 92.778]
+                文本逆序增强: [python3 train_textcnn.py --text_aug reverse --exp_str pre_training --epochs 50]
+                删除文本词: [python3 train_textcnn.py --text_aug delete --exp_str pre_training --epochs 50]
+                删除一组文本词: [python3 train_textcnn.py --text_aug crop --exp_str pre_training --epochs 50]
+                交换词: [python3 train_textcnn.py --text_aug exchange --exp_str pre_training --epochs 50]
+                混合: [python3 train_textcnn.py --text_aug mix --exp_str pre_training --epochs 50]
+        [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_reverse/ckpt.best.pth.tar --epochs 50]
+            [best acc: 88.056]
+        [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
+            [best acc: 89.167]
+        [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_crop/ckpt.best.pth.tar --epochs 50]
+            [best acc: 87.222]
+        [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_exchange/ckpt.best.pth.tar --epochs 50]
+            [best acc: 88.056] / 10类
     [自监督分类+半监督分类]
-        首先利用自监督学习到的模型初始化
-        然后进行半监督训练
+        利用自监督学习到的模型初始化同时进行半监督训练
+        [python3 train_textcnn.py --extra_tag b_60 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
+            [best acc: 90.833]
+        [python3 train_textcnn.py --extra_tag b_60_70 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
+            [best acc: 91.389]
+        [python3 train_textcnn.py --extra_tag b_60_80 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
+            [best acc: 89.167]
+        [python3 train_textcnn.py --extra_tag b_60_90 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
+            [best acc: 90.556]
+        [python3 train_textcnn.py --extra_tag b_60_100 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
+            [best acc: 90.833]
+        [python3 train_textcnn.py --extra_tag b_60_106 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
+            [best acc: 90.556]
+            
 '''
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='heybox', choices=['heybox'])
-parser.add_argument('--extra_tag', default='all', choices=['all', 'half', 'same', 'onehalf', 'double'])
+parser.add_argument('--extra_tag', default='b_60')
 parser.add_argument('--data_path', type=str, default='./data')
-parser.add_argument('--exp_str', default='standard_training', choices=['standard_training', 'semi_training', 'self_training', 'pre_training'],
+parser.add_argument('--exp_str', default='standard_training', choices=['standard_training', 'semi_training', 'self_training', 'pre_training', 'mix_training'],
                     help='(additional) name to indicate experiment')
 parser.add_argument('--text_aug', default='reverse', choices=['reverse', 'delete', 'crop', 'exchange', 'mix'],
                     help='text augmentation methods')
@@ -104,7 +134,7 @@ print('Preparing data...')
 if args.dataset == 'heybox':
     text_field = data.Field(lower=True)
     label_field = data.Field(sequential=False)
-    if args.exp_str == 'semi_training':
+    if args.exp_str == 'semi_training' or args.exp_str == 'mix_training':
         train_iter, test_iter = load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
             text_field, label_field, args, is_semi=True, device=args.device, repeat=False, shuffle=True)
     else:
@@ -207,7 +237,7 @@ def validate(val_iter, text_cnn, epoch, args):
             feature, target = batch.text, batch.label
             feature.data.t_(), target.data.sub_(1)
             if args.exp_str == 'pre_training':
-                feature, target = reorder(feature)
+                feature, target = text_aug(feature, args.text_aug)
             if args.cuda:
                 feature, target = feature.cuda(), target.cuda()
 
