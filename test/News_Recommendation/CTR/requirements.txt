@@ -1,0 +1,8 @@
+nltk==3.6.5
+tqdm==4.62.3
+numpy==1.19.5
+torch==1.9.1
+torchtext==0.3.1
+scikit-learn==0.24.2
+pytorch-nlp==0.5.0
+jieba==0.42.1
