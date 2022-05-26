@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+from random import randint
 import torch
 import numpy as np
 from torchtext import data
@@ -39,19 +40,19 @@ def load_extra_heybox_dataset(path, text_field, label_field, index_field, args, 
     )
     if args.static and args.pretrained_name and args.pretrained_path:
         vectors = load_word_vectors(args.pretrained_name, args.pretrained_path)
-        text_field.build_vocab(train_dataset, val_dataset, test_dataset, vectors=vectors)
+        text_field.build_vocab(val_dataset, vectors=vectors)
     else:
-        text_field.build_vocab(train_dataset, val_dataset, test_dataset)
-    label_field.build_vocab(train_dataset, val_dataset, test_dataset)
-    index_field.build_vocab(train_dataset, val_dataset, test_dataset)
-    train_iter, _, _ = data.Iterator.splits(
-        (train_dataset, val_dataset, test_dataset),
-        batch_sizes=(args.batch_size, args.batch_size, 20),
+        text_field.build_vocab(val_dataset)
+    label_field.build_vocab(val_dataset)
+    index_field.build_vocab(val_dataset)
+    train_iter, _  = data.Iterator.splits(
+        (train_dataset, test_dataset),
+        batch_sizes=(args.batch_size, 20),
         sort_key=lambda x: len(x.text),
         **kwargs)
     return train_iter
 
-def load_heybox_dataset(path, text_field, label_field, args, is_semi=False, **kwargs):
+def load_heybox_dataset(path, text_field, label_field, index_field, args, is_semi=False, **kwargs):
     text_field.tokenize = word_cut
     if is_semi:
         data_name = 'pseudo_train_'+args.extra_tag+".tsv"
@@ -59,7 +60,7 @@ def load_heybox_dataset(path, text_field, label_field, args, is_semi=False, **kw
             path=path, format='tsv', skip_header=True,
             train=data_name, validation='train_extra.tsv', test='test.tsv',
             fields=[
-                ('index', None),
+                ('index', index_field),
                 ('label', label_field),
                 ('text', text_field)
             ]
@@ -69,20 +70,21 @@ def load_heybox_dataset(path, text_field, label_field, args, is_semi=False, **kw
             path=path, format='tsv', skip_header=True,
             train='train.tsv', validation='train_extra.tsv', test='test.tsv',
             fields=[
-                ('index', None),
+                ('index', index_field),
                 ('label', label_field),
                 ('text', text_field)
             ]
         )
     if args.static and args.pretrained_name and args.pretrained_path:
         vectors = load_word_vectors(args.pretrained_name, args.pretrained_path)
-        text_field.build_vocab(train_dataset, val_dataset, test_dataset, vectors=vectors)
+        text_field.build_vocab(val_dataset, vectors=vectors)
     else:
-        text_field.build_vocab(train_dataset, val_dataset, test_dataset)
-    label_field.build_vocab(train_dataset, val_dataset, test_dataset)
-    train_iter, _, test_iter = data.Iterator.splits(
-        (train_dataset, val_dataset, test_dataset),
-        batch_sizes=(args.batch_size, args.batch_size, 20),
+        text_field.build_vocab(val_dataset)
+    label_field.build_vocab(val_dataset)
+    index_field.build_vocab(val_dataset)
+    train_iter, test_iter = data.Iterator.splits(
+        (train_dataset, test_dataset),
+        batch_sizes=(args.batch_size, 20),
         sort_key=lambda x: len(x.text),
         **kwargs)
     return train_iter, test_iter
@@ -131,15 +133,14 @@ def accuracy(output, target, topk=(1,)):
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
-def text_aug(inputs, text_aug="reverse"):
+def text_aug(inputs, text_aug="reverse", vocab=None, model=None):
     batch = inputs.shape[0]
     if text_aug == "mix":
-        target = torch.Tensor(np.random.permutation([0, 1, 2, 3, 4] * (int(batch / 5) + 1)), device=inputs.device)[:batch]
-    elif text_aug == "reverse":
-        target = torch.Tensor(np.random.permutation([0, 1] * (int(batch / 2) + 1)), device=inputs.device)[:batch]
+        target = torch.tensor(np.random.permutation([0, 1, 2] * (int(batch / 3) + 1)), device=inputs.device)[:batch]
+    elif text_aug == 'multi_exchange':
+        target = torch.tensor(np.random.permutation([0, 1, 2, 3] * (int(batch / 4) + 1)), device=inputs.device)[:batch]
     else:
-        # target = torch.Tensor(np.random.permutation([0, 1, 2, 3, 4, 5, 6, 7, 8, 9] * (int(batch / 10) + 1)), device=inputs.device)[:batch]
-        target = torch.Tensor(np.random.permutation([0, 1] * (int(batch / 2) + 1)), device=inputs.device)[:batch]
+        target = torch.tensor(np.random.permutation([0, 1] * (int(batch / 2) + 1)), device=inputs.device)[:batch]
     target = target.long()
     doc = torch.zeros_like(inputs)
     doc.copy_(inputs)
@@ -147,43 +148,41 @@ def text_aug(inputs, text_aug="reverse"):
         if text_aug == "reverse":
             doc[i, :] = inputs[i, :] if target[i] else inputs[i, torch.arange(inputs[i].size(0)-1, -1, -1).long()]
         elif text_aug == "delete":
-            doc[i, :] = inputs[i, :] if target[i] else torch.cat([torch.tensor(0).unsqueeze(0), inputs[i, 1:]])
-
-            # if target[i] == 0:
-            #     doc[i, :] = inputs[i, :]
-            # elif target[i] == 1:
-            #     doc[i, :] = torch.cat([torch.tensor(0).unsqueeze(0), inputs[i, 1:]])
-            # else:
-            #     doc[i, :] = torch.cat([torch.cat([inputs[i, :target[i]-1], torch.tensor(0).unsqueeze(0)]), inputs[i, target[i]:]])
+            index = randint(0, inputs[i].size(0)-1)
+            doc[i, :] = inputs[i, :] if target[i] else torch.cat([torch.cat([inputs[i, :index], torch.tensor(0, device=inputs.device).unsqueeze(0)]), inputs[i, index+1:]])
         elif text_aug == "crop":
-            doc[i, :] = inputs[i, :] if target[i] else torch.cat([torch.tensor([0 for _ in range(5)]), inputs[i, 5:]])
-
-            # if target[i] == 0:
-            #     doc[i, :] = inputs[i, :]
-            # elif target[i] == 1:
-            #     doc[i, :] = torch.cat([torch.tensor([0 for _ in range(5)]), inputs[i, 5:]])
-            # else:
-            #     doc[i, :] = torch.cat([torch.cat([inputs[i, :target[i]-1], torch.tensor([0 for _ in range(5)])]), inputs[i, target[i]+5-1:]])
+            index = randint(0, inputs[i].size(0)-5)
+            doc[i, :] = inputs[i, :] if target[i] else torch.cat([torch.cat([inputs[i, :index], torch.tensor([0 for _ in range(5)], device=inputs.device)]), inputs[i, index+5:]])
         elif text_aug == "exchange":
-            doc[i, :] = inputs[i, :] if target[i] else torch.cat([inputs[i, torch.arange(1, -1, -1).long()], inputs[i, 2:]])
-
-            # if target[i] == 0:
-            #     doc[i, :] = inputs[i, :]
-            # elif target[i] == 1:
-            #     doc[i, :] = torch.cat([inputs[i, torch.arange(1, -1, -1).long()], inputs[i, 2:]])
-            # else:
-            #     doc[i, :] = torch.cat([torch.cat([inputs[i, :target[i]-1], inputs[i, torch.arange(target[i], target[i]-2, -1).long()]]), inputs[i, target[i]+2-1:]])
+            index = randint(0, inputs[i].size(0)-2)
+            doc[i, :] = inputs[i, :] if target[i] else torch.cat([torch.cat([inputs[i, :index], inputs[i, torch.arange(index+1, index-1, -1).long()]]), inputs[i, index+2:]])
+        elif text_aug == "multi_exchange":
+            if target[i] == 0:
+                doc[i, :] = inputs[i, :] 
+            elif target[i] == 1:
+                doc[i, :] = torch.cat([torch.cat([inputs[i, :0], inputs[i, torch.arange(1, -1, -1).long()]]), inputs[i, 2:]])
+            elif target[i] == 2:
+                doc[i, :] = torch.cat([torch.cat([inputs[i, :1], inputs[i, torch.arange(2, 0, -1).long()]]), inputs[i, 3:]])
+            else:
+                doc[i, :] = torch.cat([torch.cat([inputs[i, :2], inputs[i, torch.arange(3, 1, -1).long()]]), inputs[i, 4:]])
+        elif text_aug == "sub":
+            index = randint(0, inputs[i].size(0)-1)
+            if target[i]:
+                doc[i, :] = inputs[i, :]
+            else:
+                tar_word_ind = inputs[i, index]
+                tar_word = vocab.itos[tar_word_ind]
+                sim_word = model.most_similar(tar_word)[0][0] if tar_word in model.wv else tar_word
+                sim_word_ind = vocab.stoi[sim_word] if sim_word in vocab.stoi else 0
+                doc[i, :] = torch.cat([torch.cat([inputs[i, :index], torch.tensor(sim_word_ind, device=inputs.device).unsqueeze(0)]), inputs[i, index+1:]])
         else:
+            index = randint(0, inputs[i].size(0)-2)
             if target[i] == 0:
                 doc[i, :] = inputs[i, :]
             elif target[i] == 1:
                 doc[i, :] = inputs[i, torch.arange(inputs[i].size(0)-1, -1, -1).long()]
             elif target[i] == 2:
-                doc[i, :] = torch.cat([torch.tensor(0).unsqueeze(0), inputs[i, 1:]])
-            elif target[i] == 3:
-                doc[i, :] = torch.cat([torch.tensor([0 for _ in range(5)]), inputs[i, 5:]])
-            elif target[i] == 4:
-                doc[i, :] = torch.cat([inputs[i, torch.arange(1, -1, -1).long()], inputs[i, 2:]])
+                doc[i, :] = torch.cat([torch.cat([inputs[i, :index], inputs[i, torch.arange(index+1, index-1, -1).long()]]), inputs[i, index+2:]])
             else:
                 print("target error!!!")
             

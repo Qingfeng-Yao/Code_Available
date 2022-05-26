@@ -105,6 +105,7 @@ if args.multichannel:
     args.static = True
     args.non_static = True
 args.class_num = len(label_field.vocab)
+print(args.class_num)
 args.cuda = args.device != -1 and torch.cuda.is_available()
 args.filter_sizes = [int(size) for size in args.filter_sizes.split(',')]
 

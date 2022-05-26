@@ -7,6 +7,24 @@ from preprocess import *
 
 '''
 不平衡数据的组织
+    刀塔霸业: total/171, train/45, test/20, extra_all/106
+    命运2: total/227, train/62, test/20, extra_all/145
+    怪物猎人世界: total/302, train/84, test/20, extra_all/198
+    炉石传说：魔兽英雄传: total/304, train/85, test/20, extra_all/199
+    刀塔自走棋: total/326, train/91, test/20, extra_all/215
+    魔兽世界: total/368, train/104, test/20, extra_all/244
+    彩虹六号围攻: total/512, train/147, test/20, extra_all/345
+    数码硬件: total/513, train/147, test/20, extra_all/346
+    守望先锋: total/821, train/240, test/20, extra_all/561
+    云顶之弈: total/878, train/257, test/20, extra_all/601
+    刀塔2: total/1052, train/309, test/20, extra_all/723
+    绝地求生: total/1059, train/311, test/20, extra_all/728
+    CS:GO: total/1271, train/375, test/20, extra_all/876
+    手机游戏: total/1488, train/440, test/20, extra_all/1028
+    英雄联盟: total/1776, train/526, test/20, extra_all/1230
+    盒友杂谈: total/2450, train/729, test/20, extra_all/1701
+    主机游戏: total/3038, train/905, test/20, extra_all/2113
+    PC游戏: total/3085, train/919, test/20, extra_all/2146
     
 '''
 

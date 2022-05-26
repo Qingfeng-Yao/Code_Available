@@ -16,7 +16,7 @@ import model
     [https://github.com/YyzHarry/imbalanced-semi-self]
 运行环境:
     python=3.5.6 
-    库: torch=1.0.0 torchtext=0.3.1 jieba=0.39 scikit-learn six
+    库: torch==1.0.0 torchtext==0.3.1 jieba==0.39 scikit-learn six gensim==3.8.3
     注释掉"cudnn.benchmark = True", 否则会出错(存疑)
 核心代码思想: 
     (1)输入数据: 使用torchtext.data
@@ -28,64 +28,64 @@ import model
     将原始数据分成三份: 一份用于训练(不均衡), 一份用于测试(均衡), 还有一份用于半监督(不均衡)
     三份数据均组织成tsv格式
     以下三个实验[单块小GPU无法成功运行]
-    总词汇表大小: 234675
+    总词汇表大小/标签大小/索引大小: 232037/18/19281
+        label: {'16': 5, '5': 2, '17': 0, '6': 6, '10': 4, '15': 1, '12': 10, '13': 3, '1': 7, '8': 16, '3': 13, '2': 17, '14': 8, '4': 15, '0': 11, '7': 14, '9': 12, '11': 9}
+    note: utils.py中的load_heybox_dataset函数和load_extra_heybox_dataset函数下的fields和build_vocab要一致, 且在label和index两个field下batch中获得就是对应的原始数据
     [标准分类]
-        [python3 train_textcnn.py --epochs 50]
-            [best acc: 88.611]
+        [python3 train_textcnn.py --static --non_static --multichannel --epochs 50]
+            [best acc: 90.833/f1: 90.086/prec: 91.757/recall: 90.833]
     [半监督分类]
         首先进行伪标签的生成, 即运行文件gen_pseudolabels.py
-        [python3 train_textcnn.py --extra_tag b_60 --exp_str semi_training --epochs 50]
-            [best acc: 91.389]
-        [python3 train_textcnn.py --extra_tag b_60_70 --exp_str semi_training --epochs 50]
-            [best acc: 91.111]
-        [python3 train_textcnn.py --extra_tag b_60_80 --exp_str semi_training --epochs 50]
-            [best acc: 90.833]
-        [python3 train_textcnn.py --extra_tag b_60_90 --exp_str semi_training --epochs 50]
-            [best acc: 90.833]
-        [python3 train_textcnn.py --extra_tag b_60_100 --exp_str semi_training --epochs 50]
-            [best acc: 91.667]
-        [python3 train_textcnn.py --extra_tag b_60_106 --exp_str semi_training --epochs 50]
-            [best acc: 90.556]
+        [python3 train_textcnn.py --static --non_static --multichannel --extra_tag b_60 --exp_str semi_training --epochs 50]
+            [best acc: 91.667/f1: 91.026/prec: 92.253/recall: 91.667]
+        [python3 train_textcnn.py --static --non_static --multichannel --extra_tag b_60_70 --exp_str semi_training --epochs 50]
+            [best acc: 92.222/f1: 90.751/prec: 93.054/recall: 92.222]
+        [python3 train_textcnn.py --static --non_static --multichannel --extra_tag b_60_80 --exp_str semi_training --epochs 50]
+            [best acc: 92.222/f1: 91.772/prec: 92.801/recall: 92.222]
+        [python3 train_textcnn.py --static --non_static --multichannel --extra_tag b_60_90 --exp_str semi_training --epochs 50]
+            [best acc: 91.944/f1: 91.320/prec: 92.988/recall: 91.944]
+        [python3 train_textcnn.py --static --non_static --multichannel --extra_tag b_60_100 --exp_str semi_training --epochs 50]
+            [best acc: 91.389/f1: 90.377/prec: 92.484/recall: 91.389]
+        [python3 train_textcnn.py --static --non_static --multichannel --extra_tag b_60_106 --exp_str semi_training --epochs 50]
+            [best acc: 92.222/f1: 90.545/prec: 92.839/recall: 92.222]
     [自监督分类]
         首先进行预训练(文本数据增强可借助nlpaug的思想)
             即运行文件:
-                文本逆序增强: [python3 train_textcnn.py --text_aug reverse --exp_str pre_training --epochs 50]
-                删除文本词: [python3 train_textcnn.py --text_aug delete --exp_str pre_training --epochs 50]
-                删除一组文本词: [python3 train_textcnn.py --text_aug crop --exp_str pre_training --epochs 50]
-                交换词: [python3 train_textcnn.py --text_aug exchange --exp_str pre_training --epochs 50]
-                混合: [python3 train_textcnn.py --text_aug mix --exp_str pre_training --epochs 50]
-        [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_reverse/ckpt.best.pth.tar --epochs 50]
-            [best acc: 88.056]
-        [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
-            [best acc: 89.167]
-        [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_crop/ckpt.best.pth.tar --epochs 50]
-            [best acc: 87.222]
-        [python3 train_textcnn.py --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_exchange/ckpt.best.pth.tar --epochs 50]
-            [best acc: 88.056] / 10类
+                文本逆序增强: [python3 train_textcnn.py --static --non_static --multichannel --text_aug reverse --exp_str pre_training --epochs 50]
+                删除文本词: [python3 train_textcnn.py --static --non_static --multichannel --text_aug delete --exp_str pre_training --epochs 50]
+                删除一组文本词: [python3 train_textcnn.py --static --non_static --multichannel --text_aug crop --exp_str pre_training --epochs 50]
+                交换词: [python3 train_textcnn.py --static --non_static --multichannel --text_aug exchange --exp_str pre_training --epochs 50]
+                多次交换: [python3 train_textcnn.py --static --non_static --multichannel --text_aug multi_exchange --exp_str pre_training --epochs 50]
+                同义词替换: [python3 train_textcnn.py --static --non_static --multichannel --text_aug sub --exp_str pre_training --epochs 50]
+                混合: [python3 train_textcnn.py --static --non_static --multichannel --text_aug mix --exp_str pre_training --epochs 50]
+        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_reverse/ckpt.best.pth.tar --epochs 50]
+            [best acc: 88.611/f1: 87.799/prec: 89.544/recall: 88.611]
+        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
+            [best acc: 36.111/f1: 33.783/prec: 37.459/recall: 36.111]
+        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_crop/ckpt.best.pth.tar --epochs 50]
+            [best acc: 78.611/f1: 77.731/prec: 81.331/recall: 78.611]
+        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_exchange/ckpt.best.pth.tar --epochs 50]
+            [best acc: 89.444/f1: 88.859/prec: 90.507/recall: 89.444]
+        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_multi_exchange/ckpt.best.pth.tar --epochs 50]
+            [best acc: 88.611/f1: 87.164/prec: 89.658/recall: 88.611]
+        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_sub/ckpt.best.pth.tar --epochs 50]
+            [best acc: 33.333/f1: 24.915/prec: 57.286/recall: 33.333]
+        [python3 train_textcnn.py --static --non_static --multichannel --exp_str self_training --pretrained_model checkpoint/heybox_textcnn_pre_training_mix/ckpt.best.pth.tar --epochs 50]
+            [best acc: 86.944/f1: 85.318/prec: 88.302/recall: 86.944]
     [自监督分类+半监督分类]
         利用自监督学习到的模型初始化同时进行半监督训练
-        [python3 train_textcnn.py --extra_tag b_60 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
-            [best acc: 90.833]
-        [python3 train_textcnn.py --extra_tag b_60_70 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
-            [best acc: 91.389]
-        [python3 train_textcnn.py --extra_tag b_60_80 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
-            [best acc: 89.167]
-        [python3 train_textcnn.py --extra_tag b_60_90 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
-            [best acc: 90.556]
-        [python3 train_textcnn.py --extra_tag b_60_100 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
-            [best acc: 90.833]
-        [python3 train_textcnn.py --extra_tag b_60_106 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
-            [best acc: 90.556]
+        [python3 train_textcnn.py --static --non_static --multichannel --extra_tag b_60 --exp_str mix_training --pretrained_model checkpoint/heybox_textcnn_pre_training_delete/ckpt.best.pth.tar --epochs 50]
+            [best acc: 91.111/f1: 90.452/prec: 92.516/recall: 91.111]
             
 '''
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default='heybox', choices=['heybox'])
-parser.add_argument('--extra_tag', default='b_60')
+parser.add_argument('--extra_tag', default='b_60', choices=['b_60', 'b_60_70', 'b_60_80', 'b_60_90', 'b_60_100', 'b_60_106'])
 parser.add_argument('--data_path', type=str, default='./data')
 parser.add_argument('--exp_str', default='standard_training', choices=['standard_training', 'semi_training', 'self_training', 'pre_training', 'mix_training'],
                     help='(additional) name to indicate experiment')
-parser.add_argument('--text_aug', default='reverse', choices=['reverse', 'delete', 'crop', 'exchange', 'mix'],
+parser.add_argument('--text_aug', default='reverse', choices=['reverse', 'delete', 'crop', 'exchange', 'multi_exchange', 'sub', 'mix'],
                     help='text augmentation methods')
 parser.add_argument('--device', type=int, default=0, help='device to use for iterate data, -1 mean cpu [default: 0]')
 parser.add_argument('--pretrained_model', type=str, default='', help='for self trainging')
@@ -108,7 +108,7 @@ parser.add_argument('--start_epoch', default=0, type=int)
 parser.add_argument('--batch_size', type=int, default=128, help='batch size for training [default: 128]')
 
 parser.add_argument('--print_freq', default=10, type=int, help='print frequency (default: 10)')
-parser.add_argument('--seed', default=None, type=int, help='seed for initializing training.')
+parser.add_argument('--seed', default=123, type=int, help='seed for initializing training.')
 parser.add_argument('--root_log', type=str, default='log')
 parser.add_argument('--root_model', type=str, default='./checkpoint')
 args = parser.parse_args()
@@ -133,13 +133,14 @@ if args.device is not None:
 print('Preparing data...')
 if args.dataset == 'heybox':
     text_field = data.Field(lower=True)
-    label_field = data.Field(sequential=False)
+    label_field = data.LabelField(sequential=False, use_vocab=False)
+    index_field = data.LabelField(sequential=False, use_vocab=False)
     if args.exp_str == 'semi_training' or args.exp_str == 'mix_training':
         train_iter, test_iter = load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
-            text_field, label_field, args, is_semi=True, device=args.device, repeat=False, shuffle=True)
+            text_field, label_field, index_field, args, is_semi=True, device=torch.device('cuda:{}'.format(str(args.device))), repeat=False, shuffle=True)
     else:
         train_iter, test_iter = load_heybox_dataset(os.path.join(args.data_path, args.dataset, 'input_data'), \
-            text_field, label_field, args, device=args.device, repeat=False, shuffle=True)
+            text_field, label_field, index_field, args, device=torch.device('cuda:{}'.format(str(args.device))), repeat=False, shuffle=True)
     
     args.vocabulary_size = len(text_field.vocab)
     if args.static:
@@ -152,6 +153,8 @@ if args.dataset == 'heybox':
 else:
     raise NotImplementedError("Dataset {} is not supported!".format(args.dataset))
 print("vocabulary_size: {}".format(args.vocabulary_size))
+print("label size: {}".format(len(label_field.vocab)))
+print("index size: {}".format(len(index_field.vocab)))
 
 print("===> Creating model textcnn")
 args.cuda = args.device != -1 and torch.cuda.is_available()
@@ -161,6 +164,10 @@ if args.cuda:
     torch.cuda.set_device(args.device)
     text_cnn = text_cnn.cuda()
 optimizer = torch.optim.Adam(text_cnn.parameters(), lr=args.lr)
+
+# for text_aug
+from gensim.models import KeyedVectors
+text_aug_model = KeyedVectors.load_word2vec_format(args.pretrained_path+'/'+args.pretrained_name)
 
 if args.pretrained_model:
     checkpoint = torch.load(args.pretrained_model, map_location=torch.device('cuda:{}'.format(str(args.device))))
@@ -189,9 +196,10 @@ def train(train_iter, text_cnn, optimizer, epoch, args):
         data_time.update(time.time() - end)
 
         feature, target = batch.text, batch.label
-        feature.data.t_(), target.data.sub_(1)
+        feature.data.t_()
+        # target.data.sub_(1)
         if args.exp_str == 'pre_training':
-            feature, target = text_aug(feature, args.text_aug)
+            feature, target = text_aug(feature, args.text_aug, vocab=text_field.vocab, model=text_aug_model)
         if args.cuda:
             feature, target = feature.cuda(), target.cuda()
 
@@ -235,9 +243,10 @@ def validate(val_iter, text_cnn, epoch, args):
         end = time.time()
         for i, batch in enumerate(val_iter):
             feature, target = batch.text, batch.label
-            feature.data.t_(), target.data.sub_(1)
+            feature.data.t_()
+            # target.data.sub_(1)
             if args.exp_str == 'pre_training':
-                feature, target = text_aug(feature, args.text_aug)
+                feature, target = text_aug(feature, args.text_aug, vocab=text_field.vocab, model=text_aug_model)
             if args.cuda:
                 feature, target = feature.cuda(), target.cuda()
 
@@ -272,9 +281,9 @@ def validate(val_iter, text_cnn, epoch, args):
             cls_hit = np.diag(cf)
             cls_acc = cls_hit / cls_cnt
 
-            rs = recall_score(all_targets, all_preds, average='macro')
-            ps = precision_score(all_targets, all_preds, average='macro')
-            fs = f1_score(all_targets, all_preds, average='macro')
+            rs = recall_score(all_targets, all_preds, average='weighted')
+            ps = precision_score(all_targets, all_preds, average='weighted')
+            fs = f1_score(all_targets, all_preds, average='weighted')
             output = ('Test Results: Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f} Loss {loss.avg:.5f}\
                  Recall {rs:.3f} Precision {ps:.3f} f1 {fs:.3f}'
                     .format(top1=top1, top5=top5, loss=losses, rs=rs, ps=ps, fs=fs))
