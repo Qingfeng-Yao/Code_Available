@@ -39,16 +39,39 @@ Thesis results:(其中较大的数据集没有ground truth, 仅用于比较运�
     TfidfLsa+data:
         [python3 train.py --thesis]
         [Recall: 0.736, Precision: 0.866, F1-score: 0.796]
+        [cutWord] runs for 1.91 second
+        [calc] runs for 1.53 second
+        [deduplicate] runs for 3.44 second
     Simhash(特征哈希)+data
         [python3 train.py --thesis --model_name simhash --model_type keywords]
-        [Recall: 0.692, Precision: 0.857, F1-score: 0.766]
+        [Recall: 0.659, Precision: 0.920, F1-score: 0.768]
+        [extractKeyWord] runs for 2.24 second
+        [calc] runs for 0.71 second
+        [deduplicate] runs for 2.94 second
     Simhash(特征哈希)+data+optim:
         [python3 train.py --thesis --model_name simhash --model_type keywords --optim]
-        []
+        [Recall: 0.715, Precision: 0.866, F1-score: 0.783]
+        [extractKeyWord] runs for 3.98 second
+        [calc] runs for 0.78 second
+        [deduplicate] runs for 4.76 second
     TfidfLsa+big_data:
         [python3 train.py --thesis --big_data]
+        [cutWord] runs for 21.28 second
+        [calc] runs for 29.89 second
+        [deduplicate] runs for 51.17 second
     Simhash(特征哈希)+big_data
         [python3 train.py --thesis --model_name simhash --model_type keywords --big_data]
+        [extractKeyWord] runs for 21.55 second
+        [calc] runs for 23.44 second
+        [deduplicate] runs for 44.99 second
+    Simhash(特征哈希)+big_data+optim
+        [python3 train.py --thesis --model_name simhash --model_type keywords --big_data --optim]
+        [extractKeyWord] runs for 55.52 second
+        [calc] runs for 23.74 second
+        [deduplicate] runs for 79.27 second
+    对未优化的simhash结果进行深入分析: result_analysis.py
+        首先运行[python3 train.py --thesis --model_name simhash --model_type keywords --cmp]生成false_maps.npz
+        然后运行result_analysis.py
 '''
 
 args = parse_args()

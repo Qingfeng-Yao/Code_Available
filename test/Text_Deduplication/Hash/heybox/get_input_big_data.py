@@ -46,7 +46,10 @@ for root, dirs, files in os.walk(raw_path):
                     if current_len < min_len:
                         min_len = current_len
 
+                    input_dict[f.split('.')[0]]["body"] = load_dict["content"]
+                    input_dict[f.split('.')[0]]["title"] = load_dict["title"] 
                     input_dict[f.split('.')[0]]["content"] = text
+                    input_dict[f.split('.')[0]]["length"] = len(text)
             
 print("total documents: {}".format(len(input_dict)))
 assert num_jsonfiles == len(uni_jsonfiles)

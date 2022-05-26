@@ -3,6 +3,8 @@ from .. import setting
 from . import cut_word
 from .. import utils
 
+import jieba
+
 import collections
 import jieba.posseg as psg
 
@@ -35,7 +37,9 @@ def extractKeyWord(raw_data, args):
             d["length_t"] = len(title)
             d["raw_t"] = title
             d["text_t"], d["list_t"] = c.deal(title)
-            tfidf_map_t = collections.Counter(d["list_t"])
+            tfidf_map_t = collections.Counter(d["list_t"]) 
+            if len(tfidf_map_t) == 0:
+                continue
             for k in tfidf_map_t.keys():
                 if k in idf_map:
                     tfidf_map_t[k] *= idf_map[k]

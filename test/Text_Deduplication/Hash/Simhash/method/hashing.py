@@ -107,7 +107,7 @@ def calc(query, args):
                     cur_len = v["length"]
                     sim_len = list(query_items)[sim_idx][1]["length"]
                     diff_len = abs(cur_len-sim_len)/cur_len
-                    if t_dis<40:
+                    if t_dis<36:
                         bag[sim_bid].append(query_idx)
                     elif diff_len<0.01:
                         cur_word_set = v["word_set"]

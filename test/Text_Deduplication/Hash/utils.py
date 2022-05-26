@@ -1,6 +1,33 @@
 import argparse
 import os
 import shutil
+import numpy as np
+
+def readStopwords(path):
+    stopwords = []
+    with open(path, "r", encoding="utf-8") as f:
+        stopwords = [word.strip() for word in f.readlines()]
+    return stopwords
+
+def readIdfdict(path):
+    idf = {}
+    idf_sum = 0
+    count = 0
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f.readlines():
+            word, w = line.strip().split()
+            idf[word] = float(w)
+            idf_sum += float(w)
+            count += 1
+    return idf, idf_sum/count
+
+def distance(v1, v2):
+    x = (v1 ^ v2) & ((1 << 128) - 1)
+    ans = 0
+    while x:
+        ans += 1
+        x &= x - 1
+    return ans
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -30,7 +57,7 @@ def parse_args():
     # tfidf-lda
     parser.add_argument('--cos_threshold', type=float, default=0.6)
     # simhash
-    parser.add_argument('--dis_threshold', type=int, default=35)
+    parser.add_argument('--dis_threshold', type=int, default=33)
 
     return parser.parse_args()
 
@@ -76,10 +103,19 @@ def compute_metrics(gt_dirs, gt_path, bag, query_items):
 def cmp_gt(bag, gt_dirs, out_path, gt_path, query_items):
     repeat_bag_ids = [k for k, v in bag.items() if len(v)>1]
     all_bag_ids = [k for k, _ in bag.items()]
+    print("pred single clusters: {}".format(len(all_bag_ids)-len(repeat_bag_ids)))
+    print("pred multi clusters: {}".format(len(repeat_bag_ids)))
+    true_one = 0
+    true_multi = 0
+    real_one = 0
+    false_maps = {}
+    false_num = 0
     for gt in gt_dirs:
         txt_id = gt.split("-")[1].split(".")[0]
         if gt[0] == "1":
+            real_one += 1
             if txt_id in bag.keys() and len(bag[txt_id])==1:
+                true_one += 1
                 new_dir = out_path+txt_id
                 if not os.path.exists(new_dir):
                     os.makedirs(new_dir)
@@ -123,6 +159,7 @@ def cmp_gt(bag, gt_dirs, out_path, gt_path, query_items):
 
                     if len(intersec_1)==0 and len(intersec_2)==0:
                         equal += 1
+                        true_multi += 1
                         new_dir = out_path+txt_id
                         if not os.path.exists(new_dir):
                             os.makedirs(new_dir)
@@ -135,12 +172,28 @@ def cmp_gt(bag, gt_dirs, out_path, gt_path, query_items):
                                 f.write(content)
 
                 if equal == 0:
+                    false_num += 1
+                    false_maps[false_num] = {}
                     new_dir = out_path+"*"+txt_id
                     if not os.path.exists(new_dir):
                         os.makedirs(new_dir)
                         file_path = gt_path+gt
                         new_file_path = new_dir+"/gt-"+gt
                         shutil.copy(file_path,new_file_path) 
+                        with open(file_path,'r',encoding='utf-8') as f_gt:
+                            cur_id = ""
+                            for l in f_gt.readlines():
+                                if l.strip()[-3:] == "txt":
+                                    cur_id = l.strip().split(".")[0]
+                                    false_maps[false_num][cur_id] = {"title": "", "body": ""}
+                                else:
+                                    if false_maps[false_num][cur_id]["title"] == "":
+                                        false_maps[false_num][cur_id]["title"] = l.strip()
+                                    else:
+                                        false_maps[false_num][cur_id]["body"] = l.strip()
+
+                    
+                                
                     for aid in all_bag_ids:
                         ids_sim = [query_items[a][0] for a in bag[aid]]
                         for i in ids_sim:
@@ -149,3 +202,11 @@ def cmp_gt(bag, gt_dirs, out_path, gt_path, query_items):
                                 content = "\n\n".join([query_items[a][0]+"\n"+query_items[a][1]["text"]+"\n"+query_items[a][1]["raw"] for a in bag[aid]])
                                 with open(new_file_path,'w') as f:
                                     f.write(content)
+    assert false_num == len(false_maps)
+    print("false resluts: {}".format(len(false_maps)))
+    print("true_one: {}".format(true_one))
+    print("true_multi: {}".format(true_multi))
+    print("real_one: {}".format(real_one))
+    np.savez("heybox/false_maps.npz", false_maps=false_maps)
+    
+    
